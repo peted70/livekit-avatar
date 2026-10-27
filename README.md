@@ -10,8 +10,16 @@ Lip sync is derived from the audio on each device; the stream carries what audio
 - `tools/blender/transfer_shapes.py`: transfers ARKit blend shapes and visemes from one Ready Player Me-style avatar onto another
 - `infra/`: Terraform for Azure Container Apps
 
-The story behind it is a blog series on [petexr.com](https://petexr.com), starting with
-[From CMP338 to LiveKit](https://petexr.com/ai/avatars/aws/livekit/metahuman/unreal%20engine/2026/10/27/from-cmp338-to-livekit.html).
+## Blog series
+
+How this was built, step by step, on [petexr.com](https://petexr.com):
+
+1. [From CMP338 to LiveKit: where my talking avatars started](https://petexr.com/ai/avatars/aws/livekit/metahuman/unreal%20engine/2026/10/27/from-cmp338-to-livekit.html):
+   the re:Invent 2024 MetaHuman demo, its AWS architecture, and what it was missing.
+2. [A behaviour stream for LiveKit agents](https://petexr.com/ai/avatars/livekit/2026/10/27/a-behaviour-stream-for-livekit-agents.html):
+   the idea behind this repo, and getting the agent and web client running from scratch.
+3. Giving my avatar a face, and a body that talks (coming soon): blend-shape transfer, lip
+   sync from audio, idle motion, weight shifts and talking gestures.
 
 ## Run
 
