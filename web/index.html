@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Avatar Behaviour</title>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <aside id="panel">
+      <form id="join">
+        <input id="room" placeholder="room" value="demo" />
+        <input id="name" placeholder="your name" />
+        <button type="submit">Join</button>
+      </form>
+      <p id="status">not connected</p>
+      <label class="toggle"><input id="stream-on" type="checkbox" checked /> behaviour stream</label>
+      <details>
+        <summary>test triggers</summary>
+        <div id="emotions" class="buttons"></div>
+        <div id="gestures" class="buttons"></div>
+      </details>
+      <ul id="log"></ul>
+    </aside>
+    <div id="audio" hidden></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

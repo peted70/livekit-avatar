@@ -1,0 +1,20 @@
+[project]
+name = "agent"
+version = "0.1.0"
+description = "LiveKit voice agent that publishes a non-verbal behaviour stream"
+
+authors = [
+    { name = "peted", email = "peted70@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "livekit-agents>=1.8.9",
+    "python-dotenv>=1.2.4",
+]
+
+[project.scripts]
+agent = "agent:main"
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"

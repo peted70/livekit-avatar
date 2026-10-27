@@ -1,0 +1,116 @@
+:root {
+  color-scheme: dark;
+  font: 14px/1.4 system-ui, sans-serif;
+  --panel: rgba(18, 20, 28, 0.82);
+  --line: rgba(255, 255, 255, 0.12);
+  --accent: #6c8cff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #15171f;
+  color: #e8eaf2;
+  overflow: hidden;
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+}
+
+#panel {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  width: min(320px, calc(100vw - 24px));
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+}
+
+#join {
+  display: flex;
+  gap: 6px;
+}
+
+/* display: flex would otherwise override the hidden attribute once connected. */
+#join[hidden] {
+  display: none;
+}
+
+#join input {
+  min-width: 0;
+  flex: 1;
+}
+
+input,
+button {
+  font: inherit;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 8px;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:hover,
+#join button {
+  border-color: var(--accent);
+}
+
+#status {
+  margin: 8px 0;
+  color: #aab0c4;
+}
+
+.toggle {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+details {
+  margin-top: 8px;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.buttons button {
+  padding: 2px 7px;
+  font-size: 12px;
+}
+
+#log {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  max-height: 40vh;
+  overflow: hidden;
+  font: 12px/1.5 ui-monospace, monospace;
+}
+
+#log li.local {
+  opacity: 0.6;
+}
+
+#log b {
+  color: var(--accent);
+  font-weight: 600;
+}

@@ -1,0 +1,15 @@
+.env.local
+node_modules/
+.venv/
+__pycache__/
+dist/
+web/public/*.vrm
+web/public/*.glb
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/*.tfvars
+web/public/*.wav
+
+# Blog drafts and their images (published on petexr.com)
+docs/blog/
