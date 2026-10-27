@@ -1,5 +1,7 @@
 # livekit-avatar
 
+![The avatar talking with its hands: talking poses, beats and independent fingers, driven while it speaks](docs/images/talk-gestures.gif)
+
 A LiveKit voice agent that publishes a **behaviour stream** (gaze, emotion, gestures,
 listening cues) alongside its audio, and renderers that turn it into body language.
 Lip sync is derived from the audio on each device; the stream carries what audio can't.
@@ -18,8 +20,8 @@ How this was built, step by step, on [petexr.com](https://petexr.com):
    the re:Invent 2024 MetaHuman demo, its AWS architecture, and what it was missing.
 2. [A behaviour stream for LiveKit agents](https://petexr.com/ai/avatars/livekit/2026/10/27/a-behaviour-stream-for-livekit-agents.html):
    the idea behind this repo, and getting the agent and web client running from scratch.
-3. Giving my avatar a face, and a body that talks (coming soon): blend-shape transfer, lip
-   sync from audio, idle motion, weight shifts and talking gestures.
+3. [Giving my avatar a face, and a body that talks](https://petexr.com/ai/avatars/blender/2026/10/27/giving-my-avatar-a-face-and-a-body.html):
+   blend-shape transfer, lip sync from audio, idle motion, weight shifts and talking gestures.
 
 ## Run
 
