@@ -13,3 +13,19 @@ web/public/*.wav
 
 # Blog drafts and their images (published on petexr.com)
 docs/blog/
+
+# Secrets in other env files (the example stays tracked)
+.env
+.env.*
+!.env.local.example
+
+# Terraform plans and crash logs can contain secret values
+infra/*.tfplan
+infra/crash*.log
+
+# Logs, OS and editor files
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
