@@ -22,6 +22,8 @@ How this was built, step by step, on [petexr.com](https://petexr.com):
    the idea behind this repo, and getting the agent and web client running from scratch.
 3. [Giving my avatar a face, and a body that talks](https://petexr.com/ai/avatars/blender/2026/10/27/giving-my-avatar-a-face-and-a-body.html):
    blend-shape transfer, lip sync from audio, idle motion, weight shifts and talking gestures.
+4. [Two ways to give a LiveKit agent your own voice](https://petexr.com/ai/avatars/livekit/elevenlabs/2026/10/28/two-ways-to-give-a-livekit-agent-your-own-voice.html):
+   LiveKit custom voices or ElevenLabs through LiveKit's plugin, with the ElevenLabs route step by step.
 
 ## Run
 
