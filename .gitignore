@@ -29,3 +29,6 @@ infra/crash*.log
 Thumbs.db
 .vscode/
 .idea/
+
+# Sample audio from tools/check_elevenlabs.py
+tools/elevenlabs-sample.mp3

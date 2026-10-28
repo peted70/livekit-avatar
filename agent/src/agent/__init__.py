@@ -13,17 +13,25 @@ from livekit.agents import (
     inference,
     room_io,
 )
+# Plugins register themselves on import, which LiveKit requires on the main thread.
+from livekit.plugins import elevenlabs
 
 from .behaviour import EMOTIONS, GESTURES, BehaviourPublisher, strip_tags
 
 load_dotenv(".env.local")
 logger = logging.getLogger("avatar-agent")
 
-# Cartesia "Blake" (American adult male). Set AVATAR_VOICE to a LiveKit custom voice ID (v_...)
-# to use a cloned voice instead; clones work with any of the providers they were created on.
+# The voice comes from one of two routes:
+# - "inference" (default): LiveKit Inference. AVATAR_VOICE is a Cartesia voice (default "Blake",
+#   an American adult male) or a LiveKit custom voice ID (v_...), which works with any provider
+#   it was created on.
+# - "elevenlabs": the ElevenLabs plugin with your own ELEVEN_API_KEY. AVATAR_VOICE is an
+#   ElevenLabs voice ID from your account: a library voice or your own clone.
+TTS_PROVIDER = os.environ.get("AVATAR_TTS_PROVIDER", "inference")
+DEFAULT_MODELS = {"inference": "cartesia/sonic-3", "elevenlabs": "eleven_flash_v2_5"}
 DEFAULT_VOICE = "a167e0f3-df7e-4d52-a9c3-f949145efdab"
-TTS_MODEL = os.environ.get("AVATAR_TTS_MODEL", "cartesia/sonic-3")
-VOICE = os.environ.get("AVATAR_VOICE", DEFAULT_VOICE)
+# Any LLM that LiveKit Inference offers, e.g. openai/gpt-5.5, google/gemini-3.5-flash, xai/grok-4.5.
+LLM_MODEL = os.environ.get("AVATAR_LLM", "openai/gpt-5.4-mini")
 # Local development sets its own name so it doesn't compete with the deployed agent.
 AGENT_NAME = os.environ.get("AVATAR_AGENT_NAME", "avatar-agent")
 
@@ -39,6 +47,18 @@ Your body language is controlled by tags in your reply. They are never spoken al
   {", ".join(GESTURES)}. To point at a person use [gesture:point@IDENTITY].
 Example: [emotion:amused] Ha, fair point. [gesture:open_palm] Here's how I'd think about it...
 """
+
+
+def make_tts():
+    model = os.environ.get("AVATAR_TTS_MODEL", DEFAULT_MODELS.get(TTS_PROVIDER, ""))
+    voice = os.environ.get("AVATAR_VOICE")
+    if TTS_PROVIDER == "elevenlabs":
+        if not voice:
+            raise RuntimeError("AVATAR_TTS_PROVIDER=elevenlabs needs AVATAR_VOICE set to an ElevenLabs voice ID")
+        return elevenlabs.TTS(voice_id=voice, model=model)
+    if TTS_PROVIDER != "inference":
+        raise RuntimeError(f"Unknown AVATAR_TTS_PROVIDER {TTS_PROVIDER!r}: use inference or elevenlabs")
+    return inference.TTS(model, voice=voice or DEFAULT_VOICE)
 
 
 class AvatarAgent(Agent):
@@ -64,8 +84,8 @@ server = AgentServer()
 async def entrypoint(ctx: JobContext) -> None:
     session = AgentSession(
         stt=inference.STT("deepgram/nova-3", language="en"),
-        llm=inference.LLM("openai/gpt-5.4-mini"),
-        tts=inference.TTS(TTS_MODEL, voice=VOICE),
+        llm=inference.LLM(LLM_MODEL),
+        tts=make_tts(),
         turn_handling=TurnHandlingOptions(turn_detection=inference.TurnDetector()),
     )
     behaviour = BehaviourPublisher(ctx.room, session)

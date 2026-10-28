@@ -32,6 +32,19 @@ How this was built, step by step, on [petexr.com](https://petexr.com):
 3. Web: `cd web && npm install && npm run dev`, then open http://localhost:5173 and **Join**.
    Open a second tab with a different name to see the agent turn between people.
 
+### Voice and LLM
+
+The voice comes from one of two routes, set in `agent/.env.local`:
+
+- **LiveKit Inference** (default): a Cartesia voice ("Blake" unless you set `AVATAR_VOICE`), or a
+  LiveKit custom voice (`v_…`) cloned under **Voices → Custom voices** in LiveKit Cloud.
+- **ElevenLabs** through LiveKit's plugin: `AVATAR_TTS_PROVIDER=elevenlabs`, `ELEVEN_API_KEY`, and
+  `AVATAR_VOICE` set to an ElevenLabs voice ID (a library voice or your own clone).
+  `AVATAR_TTS_MODEL` picks the model, for example `eleven_v4` (default `eleven_flash_v2_5`).
+  `tools/check_elevenlabs.py` checks the key, shows whether your plan can clone, and lists your voices.
+
+`AVATAR_LLM` picks the LLM from any model LiveKit Inference offers (default `openai/gpt-5.4-mini`).
+
 ### Avatars
 
 No avatar models are included. The web client uses the first of these it finds:
