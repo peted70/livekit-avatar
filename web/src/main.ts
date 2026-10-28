@@ -9,6 +9,8 @@ import { loadGlbRig } from './avatar/glbRig';
 import type { AvatarRig } from './avatar/types';
 import { LipSync } from './lipsync';
 import { Seats } from './seats';
+import { CameraDirector } from './camera';
+import { CAPTION_STYLES, Captions, type Style } from './captions';
 
 const TOPIC = 'avatar.behaviour';
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
@@ -78,10 +80,16 @@ async function loadRig(): Promise<AvatarRig> {
 
 const seats = new Seats(scene, rig.headPosition.y);
 const controller = new BehaviourController(seats.resolve);
+// TV-interview camera; the fixed ?view= framings turn it off.
+const director = new CameraDirector(camera, controls, rig.headPosition);
+director.enabled = !view;
+$<HTMLInputElement>('#director-on').checked = director.enabled;
 const lipsync = new LipSync();
 
 function receive(msg: BehaviourMsg, source: 'agent' | 'local') {
   controller.handle(msg);
+  director.onMessage(msg);
+  if (msg.type === 'emotion') captions.setEmotion(msg.name);
   const { type, v, t, ...rest } = msg;
   const li = document.createElement('li');
   li.className = source;
@@ -118,10 +126,43 @@ function addButton(parent: string, label: string, onClick: () => void) {
 
 // The A/B switch: with the stream off, the avatar only lip-syncs and idles.
 $<HTMLInputElement>('#stream-on').onchange = (e) => (controller.enabled = (e.target as HTMLInputElement).checked);
+$<HTMLInputElement>('#director-on').onchange = (e) => (director.enabled = (e.target as HTMLInputElement).checked);
+
+// Live subtitles from the agent's transcriptions (lk.transcription): its own speech, in sync with
+// the audio, and what you say. Each stream carries one segment's text, sent in pieces.
+const captions = new Captions($('#captions'));
+// ?captions=tiktok (or slam, teletype, bounce, blur) uses one style for every reply.
+const captionStyle = new URLSearchParams(location.search).get('captions') as Style | null;
+if (captionStyle && CAPTION_STYLES.includes(captionStyle)) captions.fixedStyle = captionStyle;
+// Previews the next style with a sample sentence, without needing the agent.
+let demoStyle = 0;
+addButton('#gestures', 'subtitle demo', () => {
+  const style = captions.fixedStyle ?? CAPTION_STYLES[demoStyle++ % CAPTION_STYLES.length];
+  const keep = captions.fixedStyle;
+  captions.fixedStyle = style;
+  const words = 'Blimey, a digital twin with my face and my voice, what could possibly go wrong?'.split(' ');
+  const segment = `demo-${Date.now()}`;
+  words.forEach((_, i) => setTimeout(() => captions.show('agent', segment, words.slice(0, i + 1).join(' ')), i * 260));
+  setTimeout(() => (captions.fixedStyle = keep), 50);
+});
+$<HTMLInputElement>('#captions-on').onchange = (e) => {
+  captions.enabled = (e.target as HTMLInputElement).checked;
+  if (!captions.enabled) captions.clear();
+};
 
 // --- LiveKit ---------------------------------------------------------------------------
 
 const room = new Room({ adaptiveStream: true, dynacast: true });
+
+room.registerTextStreamHandler('lk.transcription', async (reader, from) => {
+  const speaker = from.identity === room.localParticipant.identity ? 'you' : 'agent';
+  const segment = reader.info.attributes?.['lk.segment_id'] ?? reader.info.id;
+  let text = '';
+  for await (const chunk of reader) {
+    text += chunk;
+    captions.show(speaker, segment, text);
+  }
+});
 
 room.registerTextStreamHandler(TOPIC, async (reader) => {
   try {
@@ -145,6 +186,7 @@ room
   .on(RoomEvent.ParticipantDisconnected, (p) => seats.remove(p.identity))
   .on(RoomEvent.Disconnected, () => {
     seats.clear();
+    captions.clear();
     setStatus('disconnected');
     $('#join').hidden = false;
   });
@@ -189,6 +231,7 @@ renderer.setAnimationLoop(() => {
   rig.apply(face, body);
   rig.update(dt);
   controls.update();
+  director.update(dt);
   renderer.render(scene, camera);
 
   const s = controller.state;

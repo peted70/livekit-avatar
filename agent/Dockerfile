@@ -5,6 +5,8 @@ ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy PYTHONUNBUFFERED=1
 COPY pyproject.toml uv.lock .python-version ./
 RUN uv sync --frozen --no-dev --no-install-project
 COPY src ./src
+# persona.md (your twin's identity) and the template.
+COPY *.md ./
 RUN uv sync --frozen --no-dev
 RUN useradd --create-home agent
 USER agent

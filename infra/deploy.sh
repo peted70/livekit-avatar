@@ -12,6 +12,14 @@ set +a
 export TF_VAR_livekit_url="$LIVEKIT_URL"
 export TF_VAR_livekit_api_key="$LIVEKIT_API_KEY"
 export TF_VAR_livekit_api_secret="$LIVEKIT_API_SECRET"
+# Optional voice, LLM and tool settings (empty = the agent's defaults). AVATAR_AGENT_NAME stays
+# local: the deployed agent keeps the default name, which the deployed web app asks for.
+export TF_VAR_avatar_tts_provider="${AVATAR_TTS_PROVIDER:-}"
+export TF_VAR_avatar_voice="${AVATAR_VOICE:-}"
+export TF_VAR_avatar_tts_model="${AVATAR_TTS_MODEL:-}"
+export TF_VAR_avatar_llm="${AVATAR_LLM:-}"
+export TF_VAR_eleven_api_key="${ELEVEN_API_KEY:-}"
+export TF_VAR_tavily_api_key="${TAVILY_API_KEY:-}"
 
 TAG="${TAG:-$(date +%Y%m%d-%H%M%S)}"
 az provider register --namespace Microsoft.App --wait

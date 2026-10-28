@@ -54,6 +54,12 @@ resource "azurerm_container_app_environment" "this" {
   resource_group_name        = azurerm_resource_group.this.name
   log_analytics_workspace_id = azurerm_log_analytics_workspace.this.id
   logs_destination           = "log-analytics"
+
+  # Azure adds the Consumption profile itself; declaring it keeps Terraform from removing it.
+  workload_profile {
+    name                  = "Consumption"
+    workload_profile_type = "Consumption"
+  }
 }
 
 # The agent only makes outbound connections to LiveKit, so it has no ingress.
@@ -63,6 +69,7 @@ resource "azurerm_container_app" "agent" {
   container_app_environment_id = azurerm_container_app_environment.this.id
   resource_group_name          = azurerm_resource_group.this.name
   revision_mode                = "Single"
+  workload_profile_name        = "Consumption"
   depends_on                   = [azurerm_role_assignment.pull]
 
   identity {
@@ -83,6 +90,15 @@ resource "azurerm_container_app" "agent" {
   secret {
     name  = "livekit-api-secret"
     value = var.livekit_api_secret
+  }
+
+  # Optional API keys, only when set (Container Apps secrets can't be empty).
+  dynamic "secret" {
+    for_each = nonsensitive({ for k, v in local.agent_secrets : k => k if v != "" })
+    content {
+      name  = secret.key
+      value = local.agent_secrets[secret.key]
+    }
   }
 
   template {
@@ -108,7 +124,40 @@ resource "azurerm_container_app" "agent" {
         name        = "LIVEKIT_API_SECRET"
         secret_name = "livekit-api-secret"
       }
+      dynamic "env" {
+        for_each = { for k, v in local.agent_settings : k => v if v != "" }
+        content {
+          name  = env.key
+          value = env.value
+        }
+      }
+      dynamic "env" {
+        for_each = nonsensitive({ for k, v in local.agent_secrets : k => k if v != "" })
+        content {
+          name        = local.agent_secret_env[env.key]
+          secret_name = env.key
+        }
+      }
     }
+  }
+}
+
+locals {
+  # Voice and LLM choices, as plain environment variables.
+  agent_settings = {
+    AVATAR_TTS_PROVIDER = var.avatar_tts_provider
+    AVATAR_VOICE        = var.avatar_voice
+    AVATAR_TTS_MODEL    = var.avatar_tts_model
+    AVATAR_LLM          = var.avatar_llm
+  }
+  # Optional API keys: Container Apps secret name => value, and the env var each one feeds.
+  agent_secrets = {
+    "eleven-api-key" = var.eleven_api_key
+    "tavily-api-key" = var.tavily_api_key
+  }
+  agent_secret_env = {
+    "eleven-api-key" = "ELEVEN_API_KEY"
+    "tavily-api-key" = "TAVILY_API_KEY"
   }
 }
 
@@ -117,6 +166,7 @@ resource "azurerm_container_app" "web" {
   container_app_environment_id = azurerm_container_app_environment.this.id
   resource_group_name          = azurerm_resource_group.this.name
   revision_mode                = "Single"
+  workload_profile_name        = "Consumption"
   depends_on                   = [azurerm_role_assignment.pull]
 
   identity {

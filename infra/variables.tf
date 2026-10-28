@@ -34,3 +34,39 @@ variable "apps_location" {
   type        = string
   default     = "swedencentral"
 }
+
+# Optional agent settings, mirroring agent/.env.local (deploy.sh passes them through).
+# Empty means "use the agent's default".
+variable "avatar_tts_provider" {
+  description = "inference (default) or elevenlabs."
+  type        = string
+  default     = ""
+}
+
+variable "avatar_voice" {
+  description = "A Cartesia or LiveKit custom voice ID, or an ElevenLabs voice ID."
+  type        = string
+  default     = ""
+}
+
+variable "avatar_tts_model" {
+  type    = string
+  default = ""
+}
+
+variable "avatar_llm" {
+  type    = string
+  default = ""
+}
+
+variable "eleven_api_key" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+
+variable "tavily_api_key" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
