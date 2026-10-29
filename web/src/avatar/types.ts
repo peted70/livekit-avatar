@@ -62,7 +62,7 @@ export interface BodyState {
 
 export interface AvatarRig {
   root: Object3D;
-  /** World position of the head, for framing the camera. */
+  /** Position of the head at rest, relative to `root` (the world position while the root is at the origin). */
   headPosition: Vector3;
   apply(face: FaceState, body: BodyState): void;
   update(dt: number): void;

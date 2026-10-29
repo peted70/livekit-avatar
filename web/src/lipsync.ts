@@ -56,17 +56,17 @@ export function analyse(db: Float32Array, sampleRate: number): Mouth {
   };
 }
 
-/** Lip sync from the agent's audio, worked out on the device. */
+/**
+ * Lip sync from one voice's audio, worked out on the device. Each performer has one; they share
+ * the page's AudioContext, since browsers limit how many a page may create.
+ */
 export class LipSync {
-  private ctx = new AudioContext();
   private analyser: AnalyserNode | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
   private spectrum = new Float32Array(512);
   private mouth = silentMouth();
 
-  resume(): Promise<void> {
-    return this.ctx.resume();
-  }
+  constructor(private ctx: AudioContext) {}
 
   connect(track: MediaStreamTrack): void {
     this.source?.disconnect();

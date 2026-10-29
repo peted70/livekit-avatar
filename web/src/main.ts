@@ -2,12 +2,8 @@ import './style.css';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Room, RoomEvent, Track, type Participant, type RemoteTrack } from 'livekit-client';
-import { BehaviourController, EMOTION_NAMES, GESTURE_NAMES, type BehaviourMsg } from './behaviour';
-import { createSimpleRig } from './avatar/simpleRig';
-import { loadVrmRig } from './avatar/vrmRig';
-import { loadGlbRig } from './avatar/glbRig';
-import type { AvatarRig } from './avatar/types';
-import { LipSync } from './lipsync';
+import { EMOTION_NAMES, GESTURE_NAMES, type BehaviourMsg } from './behaviour';
+import { Performer, type CastMember } from './performer';
 import { Seats } from './seats';
 import { CameraDirector } from './camera';
 import { CAPTION_STYLES, Captions, type Style } from './captions';
@@ -32,19 +28,29 @@ const camera = new THREE.PerspectiveCamera(35, 1, 0.05, 20);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-const rig = await loadRig();
-scene.add(rig.root);
+// The cast: everything per-avatar lives on a Performer. The live agent drives the first one.
+// ?avatar=<file> (or simple) picks its avatar; by default web/public/avatar.glb or avatar.vrm.
+const params = new URLSearchParams(location.search);
+const cast: CastMember[] = [{ id: 'agent', avatar: params.get('avatar') ?? undefined }];
+const audioContext = new AudioContext();
+// Gaze towards live participants comes from their seats, set up once the lead's height is known.
+let seats: Seats;
+const performers = await Promise.all(cast.map((m) => Performer.load(m, audioContext, (id) => seats.resolve(id))));
+const lead = performers[0];
+for (const p of performers) scene.add(p.root);
+const head = lead.headPosition();
+
 // ?view=face frames a close-up of the face (lip sync, expressions); ?view=body the upper body (gestures).
-const view = new URLSearchParams(location.search).get('view');
+const view = params.get('view');
 if (view === 'face') {
-  camera.position.set(0, rig.headPosition.y + 0.08, 0.75);
-  controls.target.copy(rig.headPosition).add(new THREE.Vector3(0, 0.06, 0));
+  camera.position.set(head.x, head.y + 0.08, head.z + 0.75);
+  controls.target.copy(head).add(new THREE.Vector3(0, 0.06, 0));
 } else if (view === 'body') {
-  camera.position.set(0, rig.headPosition.y - 0.35, 1.9);
-  controls.target.copy(rig.headPosition).add(new THREE.Vector3(0, -0.45, 0));
+  camera.position.set(head.x, head.y - 0.35, head.z + 1.9);
+  controls.target.copy(head).add(new THREE.Vector3(0, -0.45, 0));
 } else {
-  camera.position.set(0, rig.headPosition.y - 0.1, 1.6);
-  controls.target.copy(rig.headPosition).add(new THREE.Vector3(0, -0.2, 0));
+  camera.position.set(head.x, head.y - 0.1, head.z + 1.6);
+  controls.target.copy(head).add(new THREE.Vector3(0, -0.2, 0));
 }
 
 function resize() {
@@ -56,38 +62,16 @@ function resize() {
 addEventListener('resize', resize);
 resize();
 
-/** Uses web/public/avatar.glb or avatar.vrm when present, otherwise the built-in figure. */
-async function loadRig(): Promise<AvatarRig> {
-  if (new URLSearchParams(location.search).get('avatar') === 'simple') return createSimpleRig();
-  const loaders: [string, (url: string) => Promise<AvatarRig>][] = [
-    ['/avatar.glb', loadGlbRig],
-    ['/avatar.vrm', loadVrmRig],
-  ];
-  for (const [url, load] of loaders) {
-    const head = await fetch(url, { method: 'HEAD' }).catch(() => null);
-    // Vite answers unknown paths with index.html, so check it's not HTML.
-    if (!head?.ok || head.headers.get('content-type')?.includes('text/html')) continue;
-    try {
-      return await load(url);
-    } catch (err) {
-      console.warn(`Failed to load ${url}`, err);
-    }
-  }
-  return createSimpleRig();
-}
-
 // --- Behaviour -------------------------------------------------------------------------
 
-const seats = new Seats(scene, rig.headPosition.y);
-const controller = new BehaviourController(seats.resolve);
+seats = new Seats(scene, head.y);
 // TV-interview camera; the fixed ?view= framings turn it off.
-const director = new CameraDirector(camera, controls, rig.headPosition);
+const director = new CameraDirector(camera, controls, head);
 director.enabled = !view;
 $<HTMLInputElement>('#director-on').checked = director.enabled;
-const lipsync = new LipSync();
 
 function receive(msg: BehaviourMsg, source: 'agent' | 'local') {
-  controller.handle(msg);
+  lead.handle(msg);
   director.onMessage(msg);
   if (msg.type === 'emotion') captions.setEmotion(msg.name);
   const { type, v, t, ...rest } = msg;
@@ -105,14 +89,14 @@ for (const name of GESTURE_NAMES) addButton('#gestures', name, () => receive({ t
 addButton('#gestures', 'interrupted', () => receive({ type: 'interrupted' }, 'local'));
 // Plays web/public/voice-sample.wav (if present) through lip sync, as if the agent were talking.
 addButton('#gestures', 'voice sample', async () => {
-  await lipsync.resume();
+  await audioContext.resume();
   const audio = new Audio('/voice-sample.wav');
   await audio.play();
   const stream = (audio as HTMLAudioElement & { captureStream(): MediaStream }).captureStream();
-  lipsync.connect(stream.getAudioTracks()[0]);
+  lead.lipsync.connect(stream.getAudioTracks()[0]);
   receive({ type: 'agent_state', state: 'speaking' }, 'local');
   audio.onended = () => {
-    lipsync.disconnect();
+    lead.lipsync.disconnect();
     receive({ type: 'agent_state', state: 'listening' }, 'local');
   };
 });
@@ -125,14 +109,16 @@ function addButton(parent: string, label: string, onClick: () => void) {
 }
 
 // The A/B switch: with the stream off, the avatar only lip-syncs and idles.
-$<HTMLInputElement>('#stream-on').onchange = (e) => (controller.enabled = (e.target as HTMLInputElement).checked);
+$<HTMLInputElement>('#stream-on').onchange = (e) => {
+  for (const p of performers) p.controller.enabled = (e.target as HTMLInputElement).checked;
+};
 $<HTMLInputElement>('#director-on').onchange = (e) => (director.enabled = (e.target as HTMLInputElement).checked);
 
 // Live subtitles from the agent's transcriptions (lk.transcription): its own speech, in sync with
 // the audio, and what you say. Each stream carries one segment's text, sent in pieces.
 const captions = new Captions($('#captions'));
 // ?captions=tiktok (or slam, teletype, bounce, blur) uses one style for every reply.
-const captionStyle = new URLSearchParams(location.search).get('captions') as Style | null;
+const captionStyle = params.get('captions') as Style | null;
 if (captionStyle && CAPTION_STYLES.includes(captionStyle)) captions.fixedStyle = captionStyle;
 // Previews the next style with a sample sentence, without needing the agent.
 let demoStyle = 0;
@@ -176,11 +162,11 @@ room
   .on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _pub, participant) => {
     if (track.kind !== Track.Kind.Audio) return;
     $('#audio').append(track.attach());
-    if (participant.isAgent) lipsync.connect(track.mediaStreamTrack);
+    if (participant.isAgent) lead.lipsync.connect(track.mediaStreamTrack);
   })
   .on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack, _pub, participant) => {
     track.detach().forEach((el) => el.remove());
-    if (participant.isAgent) lipsync.disconnect();
+    if (participant.isAgent) lead.lipsync.disconnect();
   })
   .on(RoomEvent.ParticipantConnected, (p) => addPerson(p))
   .on(RoomEvent.ParticipantDisconnected, (p) => seats.remove(p.identity))
@@ -205,9 +191,9 @@ $<HTMLFormElement>('#join').onsubmit = async (e) => {
   const identity = $<HTMLInputElement>('#name').value.trim() || `guest-${Math.random().toString(36).slice(2, 6)}`;
   setStatus('connecting…');
   try {
-    await lipsync.resume(); // needs the click's user gesture
+    await audioContext.resume(); // needs the click's user gesture
     // The shared link carries the access key (?key=…) for hosted deployments.
-    const key = new URLSearchParams(location.search).get('key') ?? '';
+    const key = params.get('key') ?? '';
     const res = await fetch(`/api/token?${new URLSearchParams({ room: roomName, identity, key })}`);
     if (!res.ok) throw new Error(await res.text());
     const { url, token } = await res.json();
@@ -227,14 +213,12 @@ $<HTMLFormElement>('#join').onsubmit = async (e) => {
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.1);
-  const { face, body } = controller.update(dt, lipsync.sample(dt));
-  rig.apply(face, body);
-  rig.update(dt);
+  for (const p of performers) p.update(dt);
   controls.update();
   director.update(dt);
   renderer.render(scene, camera);
 
-  const s = controller.state;
+  const s = lead.controller.state;
   seats.highlight(s.gaze);
   if (room.state === 'connected') {
     const agent = [...room.remoteParticipants.values()].some((p) => p.isAgent);

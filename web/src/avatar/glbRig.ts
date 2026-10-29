@@ -144,14 +144,18 @@ export async function loadGlbRig(url: string): Promise<AvatarRig> {
     if (m.isMesh && m.morphTargetDictionary && 'jawOpen' in m.morphTargetDictionary) morphMeshes.push(m);
   });
 
+  // Everything above was measured with the root at the origin, so it's all in model space
+  // (relative to the root). Posing stays in model space, so the avatar can stand anywhere.
   const headPosition = head?.node.getWorldPosition(new THREE.Vector3()) ?? new THREE.Vector3(0, 1.6, 0);
+  /** The root's world rotation, inverted; refreshed each frame in apply(). */
+  const rootInv = new THREE.Quaternion();
 
   /** Sets a bone so its model-space rotation is `delta * rest`, given its parent's current pose. */
   function setWorld(bone: Bone | null, delta: THREE.Quaternion) {
     if (!bone) return;
     const parent = bone.node.parent!;
     parent.updateWorldMatrix(true, false);
-    parent.getWorldQuaternion(_q2).invert();
+    parent.getWorldQuaternion(_q2).premultiply(rootInv).invert();
     bone.node.quaternion.copy(_q2.multiply(_q.copy(delta).multiply(bone.restWorld)));
     bone.node.updateMatrixWorld();
   }
@@ -165,11 +169,11 @@ export async function loadGlbRig(url: string): Promise<AvatarRig> {
     const offset = new THREE.Vector3(weight * 0.06, -0.02 * Math.abs(weight), 0);
     const parent = hips.node.parent!;
     parent.updateWorldMatrix(true, false);
-    hips.node.position.copy(parent.worldToLocal(hipsRestPos.clone().add(offset)));
+    hips.node.position.copy(parent.worldToLocal(root.localToWorld(hipsRestPos.clone().add(offset))));
     setWorld(hips, new THREE.Quaternion().setFromAxisAngle(_v.set(0, 0, 1), weight * 0.08));
     for (const leg of legs) {
       if (!leg) continue;
-      const hip = leg.thigh.node.getWorldPosition(new THREE.Vector3());
+      const hip = root.worldToLocal(leg.thigh.node.getWorldPosition(new THREE.Vector3()));
       const toAnkle = leg.ankle.clone().sub(hip);
       const d = Math.min(toAnkle.length(), (leg.thighLen + leg.shinLen) * 0.9999);
       const u = toAnkle.normalize();
@@ -219,6 +223,8 @@ export async function loadGlbRig(url: string): Promise<AvatarRig> {
     root,
     headPosition,
     apply(face: FaceState, body: BodyState) {
+      root.updateWorldMatrix(true, false);
+      root.getWorldQuaternion(rootInv).invert();
       setHipsAndLegs(body.weight);
       // The torso bends across the three spine bones; breathing lifts the chest a little.
       // These are model-space rotations, so the spine stays upright when the hips tilt.

@@ -72,14 +72,14 @@ Each task should leave the live single-avatar demo working.
       an audio tag in the text. Check alignment comes back, and how audio tags show up in it.
       *Done when:* a short script prints per-word times. If v4 doesn't support it, fall back to
       `eleven_multilingual_v2` for scenes or estimate times from the text.
-- [ ] [#2](https://github.com/peted70/livekit-avatar/issues/2) **0.2 Avatar per cast member.** Each cast member names its own `.glb`. For now every performer
+- [x] [#2](https://github.com/peted70/livekit-avatar/issues/2) **0.2 Avatar per cast member.** Each cast member names its own `.glb`. For now every performer
       uses `avatar.glb`, so this is about the plumbing, not a new model; distinct avatars come later
       (see open decisions). *Done when:* two cast entries pointing at the same file load as two
       independent rigs (no shared skeleton, materials or morph state).
 
 ### Phase 1: more than one avatar on stage (web refactor, no new features)
 
-- [ ] [#3](https://github.com/peted70/livekit-avatar/issues/3) **1.1 `Performer` class.** Bundle what main.ts currently has once: rig, `BehaviourController`,
+- [x] [#3](https://github.com/peted70/livekit-avatar/issues/3) **1.1 `Performer` class.** Bundle what main.ts currently has once: rig, `BehaviourController`,
       `LipSync`, and a position/facing on stage. main.ts creates one performer; behaviour is
       unchanged. *Done when:* the live demo works exactly as before.
 - [ ] [#4](https://github.com/peted70/livekit-avatar/issues/4) **1.2 Stage layout.** Place N performers in an arc, angled towards each other and the camera
@@ -164,3 +164,8 @@ Each task should leave the live single-avatar demo working.
 - 2026-10-29: #1 done. Eleven v4 with-timestamps gives per-character times; audio tags like
   `[laughs]` and `[pause]` keep their place in the alignment and take up their own time. My clone
   can laugh, but not every time, and is quieter than library voices (both now part of #8).
+- 2026-10-29: #2 and #3 done. `Performer` (web/src/performer.ts) holds a rig, behaviour controller
+  and lip sync; performers share one AudioContext. The glb rig now poses relative to its root
+  (it worked in world space, so a moved or turned avatar would have snapped back to the origin's
+  pose). Checked in a browser: two performers from one file share no objects, and one moved and
+  turned 90° poses within 0.05° of one at the origin (90° off before the fix).
