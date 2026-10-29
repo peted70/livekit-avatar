@@ -1,6 +1,6 @@
 # Plan: multi-avatar scene player
 
-Status: planned · Started 2026-10-29 · Tracked as issues labelled [scene-player](https://github.com/peted70/livekit-avatar/labels/scene-player)
+Status: planned · Started 2026-10-29 · Tracked on the [Scene player board](https://github.com/users/peted70/projects/4) as issues labelled [scene-player](https://github.com/peted70/livekit-avatar/labels/scene-player)
 
 ## Goal
 
