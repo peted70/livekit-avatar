@@ -94,7 +94,11 @@ Each task should leave the live single-avatar demo working.
 - [ ] [#7](https://github.com/peted70/livekit-avatar/issues/7) **2.1 Script parser.** Front matter plus `speaker: text` lines into a list of lines with
       tags and their character offsets. Unit tests.
 - [ ] [#8](https://github.com/peted70/livekit-avatar/issues/8) **2.2 Voice each line.** ElevenLabs with timestamps, one mp3 per line, cached by a hash of
-      text + voice + model so editing one line only re-voices that line.
+      text + voice + model so editing one line only re-voices that line. Normalise every line to
+      the same loudness (about −16 LUFS), since voices differ: my clone comes out about 10 dB
+      quieter than ElevenLabs' Roger. Delivery varies between generations (a `[laughs]` tag laughs
+      one time and not the next), so a line can be re-voiced on its own until it lands.
+      *Done when:* lines from different voices play back at the same perceived volume.
 - [ ] [#9](https://github.com/peted70/livekit-avatar/issues/9) **2.3 Timings.** Map tag offsets and words to times; write `scene.json`.
 - [ ] [#10](https://github.com/peted70/livekit-avatar/issues/10) **2.4 Default behaviour.** Add events the script doesn't spell out: listeners look at the
       speaker, the speaker looks at whoever they're addressing (the previous speaker by default,
@@ -158,4 +162,5 @@ Each task should leave the live single-avatar demo working.
 - 2026-10-29: first draft; tasks opened as issues #1–#22.
 - 2026-10-29: same avatar for every performer for now; design for any number of performers, not two.
 - 2026-10-29: #1 done. Eleven v4 with-timestamps gives per-character times; audio tags like
-  `[laughs]` and `[pause]` keep their place in the alignment and take up their own time.
+  `[laughs]` and `[pause]` keep their place in the alignment and take up their own time. My clone
+  can laugh, but not every time, and is quieter than library voices (both now part of #8).
