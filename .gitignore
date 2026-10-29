@@ -33,3 +33,6 @@ Thumbs.db
 # Sample audio from tools/check_elevenlabs.py
 tools/elevenlabs-sample.mp3
 
+
+# Spike output from tools/spike_timestamps.py
+tools/spike-*.mp3

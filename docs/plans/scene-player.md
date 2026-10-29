@@ -68,7 +68,7 @@ Each task should leave the live single-avatar demo working.
 
 ### Phase 0: spikes (answer the risky questions first)
 
-- [ ] [#1](https://github.com/peted70/livekit-avatar/issues/1) **0.1 Timestamps with Eleven v4.** Call text-to-speech with timestamps on `eleven_v4` with
+- [x] [#1](https://github.com/peted70/livekit-avatar/issues/1) **0.1 Timestamps with Eleven v4.** Call text-to-speech with timestamps on `eleven_v4` with
       an audio tag in the text. Check alignment comes back, and how audio tags show up in it.
       *Done when:* a short script prints per-word times. If v4 doesn't support it, fall back to
       `eleven_multilingual_v2` for scenes or estimate times from the text.
@@ -147,7 +147,8 @@ Each task should leave the live single-avatar demo working.
 
 ## Risks
 
-- **Timestamp support on v4** (task 0.1). Without alignment, gestures and captions drift.
+- ~~**Timestamp support on v4** (task 0.1).~~ Resolved: v4 returns character alignment that matches
+  the input exactly, audio tags included (`tools/spike_timestamps.py`).
 - **Audio-driven lip sync per performer.** One `AnalyserNode` per performer from file audio should be simple,
   but needs checking against the current live path.
 - **Recording quality.** `MediaRecorder` can drop frames on a busy machine; OBS is the fallback.
@@ -156,3 +157,5 @@ Each task should leave the live single-avatar demo working.
 
 - 2026-10-29: first draft; tasks opened as issues #1–#22.
 - 2026-10-29: same avatar for every performer for now; design for any number of performers, not two.
+- 2026-10-29: #1 done. Eleven v4 with-timestamps gives per-character times; audio tags like
+  `[laughs]` and `[pause]` keep their place in the alignment and take up their own time.
