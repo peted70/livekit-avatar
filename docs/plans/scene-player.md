@@ -1,6 +1,6 @@
 # Plan: two-avatar scene player
 
-Status: draft · Started 2026-10-29
+Status: planned · Started 2026-10-29 · Tracked as issues labelled [scene-player](https://github.com/peted70/livekit-avatar/labels/scene-player)
 
 ## Goal
 
@@ -65,68 +65,68 @@ Each task should leave the live single-avatar demo working.
 
 ### Phase 0: spikes (answer the risky questions first)
 
-- [ ] **0.1 Timestamps with Eleven v4.** Call text-to-speech with timestamps on `eleven_v4` with
+- [ ] [#1](https://github.com/peted70/livekit-avatar/issues/1) **0.1 Timestamps with Eleven v4.** Call text-to-speech with timestamps on `eleven_v4` with
       an audio tag in the text. Check alignment comes back, and how audio tags show up in it.
       *Done when:* a short script prints per-word times. If v4 doesn't support it, fall back to
       `eleven_multilingual_v2` for scenes or estimate times from the text.
-- [ ] **0.2 Second avatar.** Decide who the second character is and get a `.glb` with the same
+- [ ] [#2](https://github.com/peted70/livekit-avatar/issues/2) **0.2 Second avatar.** Decide who the second character is and get a `.glb` with the same
       blend shapes (see open decisions). *Done when:* it loads through `loadGlbRig` with a face.
 
 ### Phase 1: more than one avatar on stage (web refactor, no new features)
 
-- [ ] **1.1 `Performer` class.** Bundle what main.ts currently has once: rig, `BehaviourController`,
+- [ ] [#3](https://github.com/peted70/livekit-avatar/issues/3) **1.1 `Performer` class.** Bundle what main.ts currently has once: rig, `BehaviourController`,
       `LipSync`, and a position/facing on stage. main.ts creates one performer; behaviour is
       unchanged. *Done when:* the live demo works exactly as before.
-- [ ] **1.2 Stage layout.** Place two performers side by side, angled towards each other
+- [ ] [#4](https://github.com/peted70/livekit-avatar/issues/4) **1.2 Stage layout.** Place two performers side by side, angled towards each other
       (`?cast=2` for now, using the same .glb twice until 0.2 is done).
-- [ ] **1.3 Gaze between performers.** Each performer's `GazeResolver` resolves the other
+- [ ] [#5](https://github.com/peted70/livekit-avatar/issues/5) **1.3 Gaze between performers.** Each performer's `GazeResolver` resolves the other
       performer's identity to the direction of their head, and live participants to seats as now.
       *Done when:* a `gaze` message for the other performer turns the head towards them.
-- [ ] **1.4 Per-performer debug triggers.** The test buttons target a chosen performer.
+- [ ] [#6](https://github.com/peted70/livekit-avatar/issues/6) **1.4 Per-performer debug triggers.** The test buttons target a chosen performer.
 
 ### Phase 2: building scenes from scripts (Python tool)
 
-- [ ] **2.1 Script parser.** Front matter plus `speaker: text` lines into a list of lines with
+- [ ] [#7](https://github.com/peted70/livekit-avatar/issues/7) **2.1 Script parser.** Front matter plus `speaker: text` lines into a list of lines with
       tags and their character offsets. Unit tests.
-- [ ] **2.2 Voice each line.** ElevenLabs with timestamps, one mp3 per line, cached by a hash of
+- [ ] [#8](https://github.com/peted70/livekit-avatar/issues/8) **2.2 Voice each line.** ElevenLabs with timestamps, one mp3 per line, cached by a hash of
       text + voice + model so editing one line only re-voices that line.
-- [ ] **2.3 Timings.** Map tag offsets and words to times; write `scene.json`.
-- [ ] **2.4 Default behaviour.** Add events the script doesn't spell out: the listener looks at the
+- [ ] [#9](https://github.com/peted70/livekit-avatar/issues/9) **2.3 Timings.** Map tag offsets and words to times; write `scene.json`.
+- [ ] [#10](https://github.com/peted70/livekit-avatar/issues/10) **2.4 Default behaviour.** Add events the script doesn't spell out: the listener looks at the
       speaker, the speaker looks at the listener (glancing at the camera now and then), and
       `agent_state` speaking/listening for each performer.
-- [ ] **2.5 Command.** `uv run --project agent python tools/build_scene.py scenes/interview.md`.
+- [ ] [#11](https://github.com/peted70/livekit-avatar/issues/11) **2.5 Command.** `uv run --project agent python tools/build_scene.py scenes/interview.md`.
 
 ### Phase 3: the scene player (web)
 
-- [ ] **3.1 Load and play.** `?scene=<name>` loads `scene.json`, plays the lines in order through
+- [ ] [#12](https://github.com/peted70/livekit-avatar/issues/12) **3.1 Load and play.** `?scene=<name>` loads `scene.json`, plays the lines in order through
       one `AudioContext`, and schedules each line's events against the audio clock (not timers),
       so behaviour stays in sync if the tab stutters.
-- [ ] **3.2 Lip sync from file audio.** Route each line's audio into the speaking performer's
+- [ ] [#13](https://github.com/peted70/livekit-avatar/issues/13) **3.2 Lip sync from file audio.** Route each line's audio into the speaking performer's
       `LipSync` (it takes a `MediaStreamTrack` today; add an `AudioNode` input).
-- [ ] **3.3 Captions.** Feed word timings into `Captions` per speaker, so subtitles track the audio
+- [ ] [#14](https://github.com/peted70/livekit-avatar/issues/14) **3.3 Captions.** Feed word timings into `Captions` per speaker, so subtitles track the audio
       exactly rather than arriving as text streams.
-- [ ] **3.4 Transport.** Play, pause, restart, jump to line N; a gap setting between lines.
+- [ ] [#15](https://github.com/peted70/livekit-avatar/issues/15) **3.4 Transport.** Play, pause, restart, jump to line N; a gap setting between lines.
 
 ### Phase 4: camera for two
 
-- [ ] **4.1 Shots relative to a performer.** `CameraDirector` shots take a subject (either
+- [ ] [#16](https://github.com/peted70/livekit-avatar/issues/16) **4.1 Shots relative to a performer.** `CameraDirector` shots take a subject (either
       performer or the pair).
-- [ ] **4.2 Two-person coverage.** Add a two-shot and over-the-shoulder shots; cut to the speaker
+- [ ] [#17](https://github.com/peted70/livekit-avatar/issues/17) **4.2 Two-person coverage.** Add a two-shot and over-the-shoulder shots; cut to the speaker
       on line changes, with occasional reaction shots of the listener.
-- [ ] **4.3 Seeded randomness.** Idle motion, gestures and camera choices take a seed from the
+- [ ] [#18](https://github.com/peted70/livekit-avatar/issues/18) **4.3 Seeded randomness.** Idle motion, gestures and camera choices take a seed from the
       scene, so a replay looks the same. (Optional: replays already sound the same.)
 
 ### Phase 5: recording
 
-- [ ] **5.1 Record button.** Capture the canvas plus the scene audio with `MediaRecorder` to a
+- [ ] [#19](https://github.com/peted70/livekit-avatar/issues/19) **5.1 Record button.** Capture the canvas plus the scene audio with `MediaRecorder` to a
       `.webm` download; hide the debug panel while recording.
-- [ ] **5.2 Fixed output size.** A 1920×1080 render mode independent of the window size.
+- [ ] [#20](https://github.com/peted70/livekit-avatar/issues/20) **5.2 Fixed output size.** A 1920×1080 render mode independent of the window size.
 
 ### Phase 6: writing scripts with an LLM (optional)
 
-- [ ] **6.1 Generate a script** from a premise and two character sheets, in the script format above.
-      Review the comedy-improv patch from the other conversation as a starting point.
-- [ ] **6.2 Takes.** Generate N versions, pick one, edit, build.
+- [ ] [#21](https://github.com/peted70/livekit-avatar/issues/21) **6.1 Generate a script** from a premise and two character sheets, in the script format above.
+      A comedy-improv runner drafted separately (not yet in the repo) could be a starting point.
+- [ ] [#22](https://github.com/peted70/livekit-avatar/issues/22) **6.2 Takes.** Generate N versions, pick one, edit, build.
 
 ## Open decisions
 
@@ -147,4 +147,4 @@ Each task should leave the live single-avatar demo working.
 
 ## Change log
 
-- 2026-10-29: first draft.
+- 2026-10-29: first draft; tasks opened as issues #1–#22.
