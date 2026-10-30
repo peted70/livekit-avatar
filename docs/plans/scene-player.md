@@ -82,7 +82,7 @@ Each task should leave the live single-avatar demo working.
 - [x] [#3](https://github.com/peted70/livekit-avatar/issues/3) **1.1 `Performer` class.** Bundle what main.ts currently has once: rig, `BehaviourController`,
       `LipSync`, and a position/facing on stage. main.ts creates one performer; behaviour is
       unchanged. *Done when:* the live demo works exactly as before.
-- [ ] [#4](https://github.com/peted70/livekit-avatar/issues/4) **1.2 Stage layout.** Place N performers in an arc, angled towards each other and the camera
+- [x] [#4](https://github.com/peted70/livekit-avatar/issues/4) **1.2 Stage layout.** Place N performers in an arc, angled towards each other and the camera
       (`?cast=2` to try it). *Done when:* 1, 2 and 3 performers all lay out sensibly.
 - [ ] [#5](https://github.com/peted70/livekit-avatar/issues/5) **1.3 Gaze between performers.** Each performer's `GazeResolver` resolves any other
       performer's identity to the direction of their head, and live participants to seats as now.
@@ -169,3 +169,6 @@ Each task should leave the live single-avatar demo working.
   (it worked in world space, so a moved or turned avatar would have snapped back to the origin's
   pose). Checked in a browser: two performers from one file share no objects, and one moved and
   turned 90° poses within 0.05° of one at the origin (90° off before the fix).
+- 2026-10-30: #4 done. `?cast=n` puts n performers on a shallow arc (web/src/stage.ts), turned in
+  towards each other, with an opening shot that frames them all. The camera director starts off
+  with a cast, since its shots only frame the lead until #16.

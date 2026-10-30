@@ -5,6 +5,7 @@ import { Room, RoomEvent, Track, type Participant, type RemoteTrack } from 'live
 import { EMOTION_NAMES, GESTURE_NAMES, type BehaviourMsg } from './behaviour';
 import { Performer, type CastMember } from './performer';
 import { Seats } from './seats';
+import { stageMarks } from './stage';
 import { CameraDirector } from './camera';
 import { CAPTION_STYLES, Captions, type Style } from './captions';
 
@@ -29,20 +30,28 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
 // The cast: everything per-avatar lives on a Performer. The live agent drives the first one.
-// ?avatar=<file> (or simple) picks its avatar; by default web/public/avatar.glb or avatar.vrm.
+// ?avatar=<file> (or simple) picks the avatar; by default web/public/avatar.glb or avatar.vrm.
+// ?cast=<n> puts n of them on stage, for now all with the same avatar.
 const params = new URLSearchParams(location.search);
-const cast: CastMember[] = [{ id: 'agent', avatar: params.get('avatar') ?? undefined }];
+const castSize = Math.max(1, Math.min(6, Number(params.get('cast')) || 1));
+const cast: CastMember[] = Array.from({ length: castSize }, (_, i) => ({
+  id: i === 0 ? 'agent' : `performer-${i + 1}`,
+  avatar: params.get('avatar') ?? undefined,
+}));
 const audioContext = new AudioContext();
 // Gaze towards live participants comes from their seats, set up once the lead's height is known.
 let seats: Seats;
 const performers = await Promise.all(cast.map((m) => Performer.load(m, audioContext, (id) => seats.resolve(id))));
 const lead = performers[0];
+stageMarks(performers.length).forEach((mark, i) => performers[i].place(mark.position, mark.yaw));
 for (const p of performers) scene.add(p.root);
 const head = lead.headPosition();
 
 // ?view=face frames a close-up of the face (lip sync, expressions); ?view=body the upper body (gestures).
 const view = params.get('view');
-if (view === 'face') {
+resize();
+if (performers.length > 1) frameGroup();
+else if (view === 'face') {
   camera.position.set(head.x, head.y + 0.08, head.z + 0.75);
   controls.target.copy(head).add(new THREE.Vector3(0, 0.06, 0));
 } else if (view === 'body') {
@@ -60,14 +69,26 @@ function resize() {
   camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize);
-resize();
+
+/** A wide shot of the whole cast: centred on their heads, far enough back to fit them all across. */
+function frameGroup() {
+  const heads = performers.map((p) => p.headPosition());
+  const centre = heads.reduce((sum, h) => sum.add(h), new THREE.Vector3()).divideScalar(heads.length);
+  const xs = heads.map((h) => h.x);
+  const halfWidth = (Math.max(...xs) - Math.min(...xs)) / 2 + 0.6;
+  const halfFov = Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * camera.aspect);
+  const front = Math.max(...heads.map((h) => h.z));
+  controls.target.copy(centre).add(new THREE.Vector3(0, -0.4, 0));
+  camera.position.set(centre.x, centre.y - 0.15, front + Math.max(2.4, halfWidth / Math.tan(halfFov)));
+}
 
 // --- Behaviour -------------------------------------------------------------------------
 
 seats = new Seats(scene, head.y);
-// TV-interview camera; the fixed ?view= framings turn it off.
+// TV-interview camera; the fixed ?view= framings turn it off. Its shots only know the lead, so
+// with a cast it starts off and the group shot stays (shots for a cast are #16).
 const director = new CameraDirector(camera, controls, head);
-director.enabled = !view;
+director.enabled = !view && performers.length === 1;
 $<HTMLInputElement>('#director-on').checked = director.enabled;
 
 function receive(msg: BehaviourMsg, source: 'agent' | 'local') {
