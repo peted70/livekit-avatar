@@ -135,7 +135,7 @@ Each task should leave the live single-avatar demo working.
 
 ### Phase 6: writing scripts with an LLM (optional)
 
-- [ ] [#21](https://github.com/peted70/livekit-avatar/issues/21) **6.1 Generate a script** from a premise and a character sheet per cast member, in the script format above.
+- [x] [#21](https://github.com/peted70/livekit-avatar/issues/21) **6.1 Generate a script** from a premise and a character sheet per cast member, in the script format above.
       A comedy-improv runner drafted separately (not yet in the repo) could be a starting point.
 - [ ] [#22](https://github.com/peted70/livekit-avatar/issues/22) **6.2 Takes.** Generate N versions, pick one, edit, build.
 
@@ -218,3 +218,9 @@ Each task should leave the live single-avatar demo working.
   the window's size, captions in the picture, audio at the scene's level. Chrome's WebM has no
   duration in its header; `ffmpeg -i in.webm -c:v libx264 -crf 18 -c:a aac out.mp4` gives an
   MP4 for sites that want one.
+- 2026-10-30: #21 done. `tools/write_scene.py` writes a script from a brief (`scenes/briefs/`:
+  the cast with a character note each, a rough line count, and a premise) through LiveKit
+  Inference with the agent's model and keys, so no new account. The model writes only the
+  dialogue; the front matter comes from the brief. The result goes through the script parser,
+  and a mistake goes back to the model quoting the line (the first real run invented an emotion,
+  "dry", and fixed it). Output is a draft to edit before building.
