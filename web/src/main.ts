@@ -7,6 +7,7 @@ import { Performer, type CastMember } from './performer';
 import { Seats } from './seats';
 import { stageMarks } from './stage';
 import { ScenePlayer, loadScene } from './scenePlayer';
+import { TabRecorder, download } from './recorder';
 import { CameraDirector, groupFraming } from './camera';
 import { CAPTION_STYLES, Captions, type Style } from './captions';
 
@@ -190,17 +191,52 @@ if (built) {
   await player.load();
   setStatus(`"${built.scene.title || sceneName}": ${built.scene.lines.length} lines`);
   const play = $<HTMLButtonElement>('#play');
+  const start = () => {
+    director.restart();
+    player!.play();
+    play.textContent = 'Stop';
+  };
   play.onclick = async () => {
     await audioContext.resume(); // needs the click's user gesture
     if (player!.playing) {
       player!.stop();
       play.textContent = 'Play scene';
-    } else {
-      player!.play();
-      play.textContent = 'Stop';
-    }
+    } else start();
   };
-  player.onEnd = () => (play.textContent = 'Play scene');
+
+  // Record: share this tab, hide the panel, play from the top, and save a .webm when it ends
+  // (or on Esc).
+  let recording: TabRecorder | null = null;
+  const finish = async () => {
+    const rec = recording;
+    if (!rec) return;
+    recording = null;
+    player!.stop();
+    play.textContent = 'Play scene';
+    document.body.classList.remove('recording');
+    download(await rec.stop(), `${sceneName}.webm`);
+    setStatus(`saved ${sceneName}.webm`);
+  };
+  $<HTMLButtonElement>('#record').onclick = async () => {
+    await audioContext.resume();
+    player!.stop();
+    try {
+      recording = await TabRecorder.start(player!.output);
+    } catch {
+      setStatus('recording cancelled');
+      return;
+    }
+    recording.onEnded = finish;
+    document.body.classList.add('recording');
+    // Give the sharing prompt time to go, and the director a moment on its opening shot.
+    setTimeout(start, 800);
+  };
+  addEventListener('keydown', (e) => e.key === 'Escape' && finish());
+  player.onEnd = () => {
+    play.textContent = 'Play scene';
+    // Let the last caption fade before stopping.
+    if (recording) setTimeout(finish, 1500);
+  };
   // Lines never overlap, so every performer's words share the agent's caption style, a new
   // segment (and style) per line.
   player.onWords = (_line, i, text) => captions.show('agent', `scene-${i}`, text);

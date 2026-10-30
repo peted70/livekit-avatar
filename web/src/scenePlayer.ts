@@ -51,6 +51,8 @@ export class ScenePlayer {
   onEnd?: () => void;
   /** The words of line `index` spoken so far. */
   onWords?: (line: SceneLine, index: number, text: string) => void;
+  /** Every line's audio passes through here on its way to the speakers; tap it to record. */
+  readonly output: GainNode;
 
   private buffers: AudioBuffer[] = [];
   private sources: AudioBufferSourceNode[] = [];
@@ -63,7 +65,10 @@ export class ScenePlayer {
     private ctx: AudioContext,
     private cast: Map<string, Performer>,
     private send: (performer: Performer, msg: BehaviourMsg) => void,
-  ) {}
+  ) {
+    this.output = ctx.createGain();
+    this.output.connect(ctx.destination);
+  }
 
   get playing(): boolean {
     return this.sources.length > 0;
@@ -82,7 +87,7 @@ export class ScenePlayer {
     for (const [i, line] of this.scene.lines.entries()) {
       const speaker = this.cast.get(line.speaker)!;
       const src = Object.assign(this.ctx.createBufferSource(), { buffer: this.buffers[i] });
-      src.connect(this.ctx.destination);
+      src.connect(this.output);
       src.connect(speaker.lipsync.input);
       src.start(at);
       this.sources.push(src);

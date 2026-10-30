@@ -129,7 +129,7 @@ Each task should leave the live single-avatar demo working.
 
 ### Phase 5: recording
 
-- [ ] [#19](https://github.com/peted70/livekit-avatar/issues/19) **5.1 Record button.** Capture the canvas plus the scene audio with `MediaRecorder` to a
+- [x] [#19](https://github.com/peted70/livekit-avatar/issues/19) **5.1 Record button.** Capture the canvas plus the scene audio with `MediaRecorder` to a
       `.webm` download; hide the debug panel while recording.
 - [ ] [#20](https://github.com/peted70/livekit-avatar/issues/20) **5.2 Fixed output size.** A 1920×1080 render mode independent of the window size.
 
@@ -211,3 +211,10 @@ Each task should leave the live single-avatar demo working.
   and to a listener's reaction when they react. With one performer the shots and cut rules are
   as before. The over-the-shoulder shot first sat too close: a listener turned to the speaker
   blocked them, so it now stands further back and out.
+- 2026-10-30: #19 done. Record captures this tab (getDisplayMedia, this tab offered first), not
+  the canvas, since the captions are HTML over it; the audio comes straight from the player's
+  output, not the tab. The panel and cursor are hidden; it plays from the opening shot and saves
+  `<scene>.webm` when the scene ends (or on Esc). Checked in Chrome with hello: VP9 + Opus at
+  the window's size, captions in the picture, audio at the scene's level. Chrome's WebM has no
+  duration in its header; `ffmpeg -i in.webm -c:v libx264 -crf 18 -c:a aac out.mp4` gives an
+  MP4 for sites that want one.

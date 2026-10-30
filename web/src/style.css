@@ -24,6 +24,14 @@ body {
   inset: 0;
 }
 
+/* While a scene records, only the stage and captions are in the picture. */
+body.recording #panel {
+  display: none;
+}
+body.recording {
+  cursor: none;
+}
+
 #panel {
   position: fixed;
   top: 12px;

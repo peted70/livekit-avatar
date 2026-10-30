@@ -89,6 +89,13 @@ export class CameraDirector {
     this.cut(this.cast ? 'group' : 'medium');
   }
 
+  /** Back to the opening shot, as a scene starts. */
+  restart(): void {
+    this.speaker = this.performers[0];
+    this.pausedUntil = 0;
+    this.cut(this.cast ? 'group' : 'medium');
+  }
+
   private get cast(): boolean {
     return this.performers.length > 1;
   }
