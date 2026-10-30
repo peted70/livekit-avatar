@@ -15,8 +15,13 @@
         <button type="submit">Join</button>
       </form>
       <div id="scene-controls" hidden>
-        <button id="play" type="button">Play scene</button>
-        <button id="record" type="button">Record</button>
+        <div class="buttons">
+          <button id="play" type="button">Play scene</button>
+          <button id="restart" type="button">Restart</button>
+          <button id="record" type="button">Record</button>
+        </div>
+        <label class="field">from <select id="line"></select></label>
+        <label class="field">gap between lines <input id="gap" type="number" min="0" max="3" step="0.05" /> s</label>
       </div>
       <p id="status">not connected</p>
       <label class="toggle"><input id="stream-on" type="checkbox" checked /> behaviour stream</label>
@@ -24,6 +29,7 @@
       <label class="toggle"><input id="captions-on" type="checkbox" checked /> subtitles</label>
       <details>
         <summary>test triggers</summary>
+        <label class="field" id="trigger-for" hidden>for <select id="trigger-target"></select></label>
         <div id="emotions" class="buttons"></div>
         <div id="gestures" class="buttons"></div>
       </details>

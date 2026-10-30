@@ -87,7 +87,7 @@ Each task should leave the live single-avatar demo working.
 - [x] [#5](https://github.com/peted70/livekit-avatar/issues/5) **1.3 Gaze between performers.** Each performer's `GazeResolver` resolves any other
       performer's identity to the direction of their head, and live participants to seats as now.
       *Done when:* a `gaze` message naming another performer turns the head towards them.
-- [ ] [#6](https://github.com/peted70/livekit-avatar/issues/6) **1.4 Per-performer debug triggers.** The test buttons target a chosen performer.
+- [x] [#6](https://github.com/peted70/livekit-avatar/issues/6) **1.4 Per-performer debug triggers.** The test buttons target a chosen performer.
 
 ### Phase 2: building scenes from scripts (Python tool)
 
@@ -115,7 +115,7 @@ Each task should leave the live single-avatar demo working.
       `LipSync` (it takes a `MediaStreamTrack` today; add an `AudioNode` input).
 - [x] [#14](https://github.com/peted70/livekit-avatar/issues/14) **3.3 Captions.** Feed word timings into `Captions` per speaker, so subtitles track the audio
       exactly rather than arriving as text streams.
-- [ ] [#15](https://github.com/peted70/livekit-avatar/issues/15) **3.4 Transport.** Play, pause, restart, jump to line N; a gap setting between lines.
+- [x] [#15](https://github.com/peted70/livekit-avatar/issues/15) **3.4 Transport.** Play, pause, restart, jump to line N; a gap setting between lines.
 
 ### Phase 4: camera for a cast
 
@@ -124,7 +124,7 @@ Each task should leave the live single-avatar demo working.
 - [x] [#17](https://github.com/peted70/livekit-avatar/issues/17) **4.2 Multi-person coverage.** Add group shots (two-shot, wide of everyone) and
       over-the-shoulder shots; cut to the speaker on line changes, with occasional reaction shots
       of a listener.
-- [ ] [#18](https://github.com/peted70/livekit-avatar/issues/18) **4.3 Seeded randomness.** Idle motion, gestures and camera choices take a seed from the
+- [x] [#18](https://github.com/peted70/livekit-avatar/issues/18) **4.3 Seeded randomness.** Idle motion, gestures and camera choices take a seed from the
       scene, so a replay looks the same. (Optional: replays already sound the same.)
 
 ### Phase 5: recording
@@ -237,3 +237,14 @@ Each task should leave the live single-avatar demo working.
   WebM lacks. Sharp output needs a frame at least 1920 physical pixels wide (full screen on a
   1080p display); the status says when it was smaller. Checked: a 1280x860 window recorded
   1280x720 with no bars, converted to a 1920x1080 MP4 of 9.3s.
+- 2026-10-30: #6, #15 and #18 done. Test triggers act on the performer picked in "for", including
+  "look at" any of them. Scene transport: Play/Pause/Resume, Restart, start from any line, and a
+  gap setting; starting partway through a line applies its emotion and gaze so far and skips
+  gestures already past. Seeding: everything that chooses at random takes a source (idle
+  motion, talk gestures, camera, caption styles), seeded per scene and performer when a scene
+  plays from the top, with clocks and timers restarted. Two things had to change for replays to
+  match: while a scene plays, time comes from the audio clock (a slow first frame, such as a
+  shader compiling, was putting cuts out of step), and talk gestures and eyebrow flashes draw
+  from their own sources (how many stressed syllables register depends on frame timing, and
+  each one drew from the shared source). Replays now pick the same shots, poses and caption
+  styles; motion within a pose can differ by a frame or two.

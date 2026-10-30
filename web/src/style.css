@@ -83,6 +83,22 @@ button:hover,
   color: #aab0c4;
 }
 
+.field {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.field select {
+  min-width: 0;
+  flex: 1;
+}
+
+.field input {
+  width: 4.5em;
+}
+
 .toggle {
   display: flex;
   gap: 6px;

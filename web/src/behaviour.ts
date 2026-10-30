@@ -1,4 +1,5 @@
 import type { Mouth } from './lipsync';
+import { seeded, type Rng } from './random';
 import { FACE_KEYS, neutralFace, restArm, type ArmPose, type BodyState, type FaceState } from './avatar/types';
 import { LOOSE_FIST, OPEN_HAND, POINTING_HAND, TalkGestures, lerpArm } from './gestures';
 
@@ -51,7 +52,6 @@ interface ActiveGesture {
   amp: number;
 }
 
-const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const clamp = (x: number, a: number, b: number) => Math.min(b, Math.max(a, x));
 /** Frame-rate independent exponential approach. */
 const damp = (cur: number, target: number, lambda: number, dt: number) => cur + (target - cur) * (1 - Math.exp(-lambda * dt));
@@ -80,6 +80,13 @@ const SHRUG_ARM: ArmPose = { forward: 0.25, out: 0.35, elbow: 1.45, twist: 1.5, 
  */
 export class BehaviourController {
   enabled = true;
+  /** Random choices: blinks, glances, nods, weight shifts. A scene seeds it with restart(). */
+  rng: Rng = Math.random;
+  /**
+   * Eyebrow flashes on stressed syllables get their own source: how many syllables register
+   * depends on when frames sample the audio, and that mustn't shift every other choice.
+   */
+  private flashRng: Rng = Math.random;
 
   private time = 0;
   private agentState = 'initializing';
@@ -107,9 +114,31 @@ export class BehaviourController {
   private talk = new TalkGestures();
   private weight = 0;
   private weightTarget = 0;
-  private nextWeightShift = rand(4, 8);
+  private nextWeightShift = this.rand(4, 8);
 
   constructor(private resolve: GazeResolver) {}
+
+  /**
+   * Starts the clock and the random timers again, choosing with `rng` from now on, so a scene
+   * replays the same. The current pose carries on and settles from wherever it is.
+   */
+  restart(rng: Rng): void {
+    this.rng = rng;
+    // Talk gestures and eyebrow flashes draw from their own sources, seeded from this one.
+    this.talk.restart(seeded((rng() * 2 ** 32) >>> 0));
+    this.flashRng = seeded((rng() * 2 ** 32) >>> 0);
+    this.time = 0;
+    this.gesture = null;
+    this.emotionAt = this.interruptedAt = this.blinkStart = this.browFlashAt = -Infinity;
+    this.nextSaccade = 0;
+    this.nextBlink = 1;
+    this.nextNod = Infinity;
+    this.nextWeightShift = this.rand(4, 8);
+  }
+
+  private rand(a: number, b: number): number {
+    return a + this.rng() * (b - a);
+  }
 
   get state() {
     return { agent: this.agentState, user: this.userState, gaze: this.gazeTarget, emotion: this.emotion };
@@ -125,7 +154,7 @@ export class BehaviourController {
       case 'user_state':
         if (msg.state === 'speaking' && this.userState !== 'speaking') this.browFlash(0.35);
         this.userState = msg.state;
-        if (msg.state === 'speaking') this.nextNod = t + rand(1.2, 2.5);
+        if (msg.state === 'speaking') this.nextNod = t + this.rand(1.2, 2.5);
         break;
       case 'gaze':
         if (msg.target !== this.gazeTarget) this.blinkStart = t; // people blink as they shift gaze
@@ -163,7 +192,7 @@ export class BehaviourController {
     if (on && this.userState === 'speaking' && this.agentState !== 'speaking' && !g && t > this.nextNod) {
       g = this.gesture = { name: 'nod', target: null, start: t, amp: 0.5 };
       p = 0;
-      this.nextNod = t + rand(2.5, 5);
+      this.nextNod = t + this.rand(2.5, 5);
     }
 
     // Gaze: where the agent wants to look, resolved for this device.
@@ -171,8 +200,8 @@ export class BehaviourController {
     if (on && this.agentState === 'thinking') gaze = { yaw: gaze.yaw - 0.35, pitch: 0.22 };
 
     if (t > this.nextSaccade) {
-      this.saccade = { yaw: rand(-0.05, 0.05), pitch: rand(-0.03, 0.03) };
-      this.nextSaccade = t + rand(0.4, 2.2);
+      this.saccade = { yaw: this.rand(-0.05, 0.05), pitch: this.rand(-0.03, 0.03) };
+      this.nextSaccade = t + this.rand(0.4, 2.2);
     }
     // Eyes lead quickly, the head follows more slowly and not all the way.
     this.headYaw = damp(this.headYaw, gaze.yaw * 0.85, 4, dt);
@@ -189,7 +218,7 @@ export class BehaviourController {
     // Blinks
     if (t > this.nextBlink) {
       this.blinkStart = t;
-      this.nextBlink = t + rand(2, 5.5);
+      this.nextBlink = t + this.rand(2, 5.5);
     }
     const bp = (t - this.blinkStart) / 0.16;
     const face: FaceState = { ...this.face, jaw, visemes, blink: bp >= 0 && bp < 1 ? Math.sin(Math.PI * bp) : 0 };
@@ -199,8 +228,8 @@ export class BehaviourController {
     const breath = 0.5 + 0.5 * Math.sin(t * 1.5);
     // Every so often, settle onto one foot (or back to both).
     if (t > this.nextWeightShift) {
-      this.weightTarget = [-1, 0, 1].filter((w) => w !== this.weightTarget)[Math.floor(Math.random() * 2)];
-      this.nextWeightShift = t + rand(4, 9);
+      this.weightTarget = [-1, 0, 1].filter((w) => w !== this.weightTarget)[Math.floor(this.rng() * 2)];
+      this.nextWeightShift = t + this.rand(4, 9);
     }
     this.weight = damp(this.weight, this.weightTarget, 1.0, dt);
     const arms = this.talk.update(t, dt, on && speaking, jaw, on ? GESTURE_AMOUNT[this.emotion] : 0);
@@ -257,7 +286,9 @@ export class BehaviourController {
     if (on && this.agentState === 'listening' && this.userState === 'speaking') body.headRoll += 0.05;
 
     // Brow flashes: a stressed syllable sometimes gets one, as it does in real speech.
-    if (on && arms.onset && Math.random() < 0.35 && t - this.browFlashAt > 0.8) this.browFlash(rand(0.3, 0.55));
+    if (on && arms.onset && this.flashRng() < 0.35 && t - this.browFlashAt > 0.8) {
+      this.browFlash(0.3 + this.flashRng() * 0.25);
+    }
     const fp = (t - this.browFlashAt) / 0.45;
     if (on && fp < 1) face.browUp = Math.max(face.browUp, this.browFlashAmp * Math.sin(Math.PI * Math.min(1, fp * 1.6)) * (1 - fp * 0.4));
     // Concentrating while the reply is being worked out.

@@ -1,3 +1,4 @@
+import type { Rng } from './random';
 import { restArm, type ArmPose, type HandShape } from './avatar/types';
 
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
@@ -47,13 +48,12 @@ const TALK_POSES: { left: ArmPose; right: ArmPose }[] = [
 ];
 const REST = { left: restArm(), right: restArm() };
 
-const rand = (a: number, b: number) => a + Math.random() * (b - a);
-
 /**
  * Co-speech gestures, generated on the device: a new talking pose every phrase or so,
  * with small beats on stressed syllables (sudden rises in loudness).
  */
 export class TalkGestures {
+  rng: Rng = Math.random;
   private left = restArm();
   private right = restArm();
   private target = REST;
@@ -62,16 +62,30 @@ export class TalkGestures {
   private lastBeat = -Infinity;
   private beatAmp = 0;
 
+  /** Back to rest, choosing with `rng` from now on, as a scene starts. */
+  restart(rng: Rng): void {
+    this.rng = rng;
+    this.left = restArm();
+    this.right = restArm();
+    this.target = REST;
+    this.nextPhrase = 0;
+    this.lastBeat = -Infinity;
+  }
+
+  private rand(a: number, b: number): number {
+    return a + this.rng() * (b - a);
+  }
+
   /** `amount` scales how big the gestures are (emotion-dependent). Returns the arms and a beat 0..1. */
   update(t: number, dt: number, speaking: boolean, jaw: number, amount: number) {
     if (!speaking) {
       this.target = REST;
-      this.nextPhrase = t + rand(0.15, 0.5);
+      this.nextPhrase = t + this.rand(0.15, 0.5);
     } else if (t > this.nextPhrase) {
       // Now and then drop the hands for a phrase, like people do.
       const options = TALK_POSES.filter((p) => p !== this.target);
-      this.target = Math.random() < 0.15 ? REST : options[Math.floor(Math.random() * options.length)];
-      this.nextPhrase = t + rand(1.4, 3.0);
+      this.target = this.rng() < 0.15 ? REST : options[Math.floor(this.rng() * options.length)];
+      this.nextPhrase = t + this.rand(1.4, 3.0);
     }
     const k = 1 - Math.exp(-5 * dt);
     this.left = lerpArm(this.left, lerpArm(REST.left, this.target.left, amount), k);

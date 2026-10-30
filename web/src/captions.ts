@@ -1,3 +1,5 @@
+import type { Rng } from './random';
+
 export type Speaker = 'agent' | 'you';
 
 /** How long a line stays up after it was last updated, in ms. */
@@ -29,7 +31,6 @@ const EMOTION_STYLES: Record<string, Style[]> = {
   curious: ['blur', 'tiktok', 'teletype'],
 };
 
-const rand = (a: number, b: number) => a + Math.random() * (b - a);
 
 interface Line {
   el: HTMLElement;
@@ -55,6 +56,8 @@ export class Captions {
   private lastStyle: Style | null = null;
   /** Set to use one style for every reply instead of picking. */
   fixedStyle: Style | null = null;
+  /** Style picks and word tilts. A scene seeds it with restart(), so a replay looks the same. */
+  rng: Rng = Math.random;
 
   constructor(private root: HTMLElement) {
     for (const speaker of ['you', 'agent'] as const) {
@@ -103,6 +106,17 @@ export class Captions {
     line.timer = window.setTimeout(() => this.exit(line, line.words.length), LINGER_MS);
   }
 
+  /** Forgets the last style (each pick avoids it) and chooses with `rng` from now on. */
+  restart(rng: Rng): void {
+    this.rng = rng;
+    this.lastStyle = null;
+    this.clear();
+  }
+
+  private rand(a: number, b: number): number {
+    return a + this.rng() * (b - a);
+  }
+
   clear(): void {
     for (const line of this.lines.values()) {
       clearTimeout(line.timer);
@@ -115,7 +129,7 @@ export class Captions {
   private pickStyle(): Style {
     if (this.fixedStyle) return this.fixedStyle;
     const options = (EMOTION_STYLES[this.emotion] ?? EMOTION_STYLES.neutral).filter((s) => s !== this.lastStyle);
-    return (this.lastStyle = options[Math.floor(Math.random() * options.length)] ?? 'slam');
+    return (this.lastStyle = options[Math.floor(this.rng() * options.length)] ?? 'slam');
   }
 
   private word(line: Line, token: string): HTMLElement {
@@ -123,7 +137,7 @@ export class Captions {
     slot.className = 'slot';
     const w = document.createElement('span');
     w.className = 'w';
-    w.style.setProperty('--r', `${rand(-12, 12).toFixed(1)}deg`);
+    w.style.setProperty('--r', `${this.rand(-12, 12).toFixed(1)}deg`);
     slot.append(w);
     this.setText(line, slot, token);
     line.el.append(slot);
@@ -173,9 +187,9 @@ export class Captions {
     // Measure first, then take them out of the flow, so the remaining words can glide at once.
     const rects = leaving.map((w) => w.getBoundingClientRect());
     leaving.forEach((w, i) => {
-      w.style.setProperty('--dx', `${rand(-220, 220).toFixed(0)}px`);
-      w.style.setProperty('--dy', `${rand(-180, -60).toFixed(0)}px`);
-      w.style.setProperty('--dr', `${rand(-110, 110).toFixed(0)}deg`);
+      w.style.setProperty('--dx', `${this.rand(-220, 220).toFixed(0)}px`);
+      w.style.setProperty('--dy', `${this.rand(-180, -60).toFixed(0)}px`);
+      w.style.setProperty('--dr', `${this.rand(-110, 110).toFixed(0)}deg`);
       Object.assign(w.style, { position: 'absolute', left: `${rects[i].left - box.left}px`, top: `${rects[i].top - box.top}px` });
       w.classList.add('out');
       setTimeout(() => w.remove(), EXIT_MS);

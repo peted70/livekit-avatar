@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { BehaviourMsg } from './behaviour';
 import type { Performer } from './performer';
+import type { Rng } from './random';
 
 /** A camera position and look target relative to a performer's head, plus a lens. */
 interface Shot {
@@ -31,7 +32,6 @@ const OTS_FOV = 30;
 
 const BIG_GESTURES = new Set(['shrug', 'open_palm', 'point']);
 const UP = new THREE.Vector3(0, 1, 0);
-const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const smoothstep = (x: number) => x * x * (3 - 2 * x);
 
 /**
@@ -59,6 +59,8 @@ export function groupFraming(performers: Performer[], fov: number, aspect: numbe
  */
 export class CameraDirector {
   enabled = true;
+  /** Which shot to cut to, and when. A scene seeds it with restart(). */
+  rng: Rng = Math.random;
 
   private time = 0;
   private shot: ShotName = 'medium';
@@ -71,7 +73,7 @@ export class CameraDirector {
   /** The framing a reaction shot uses. */
   private reactionShot: SoloShot = 'medium';
   private shotStart = 0;
-  private nextCut = rand(5, 10);
+  private nextCut = this.rand(5, 10);
   private lastCut = -Infinity;
   private pausedUntil = 0;
   private wasSpeaking = false;
@@ -89,11 +91,16 @@ export class CameraDirector {
     this.cut(this.cast ? 'group' : 'medium');
   }
 
-  /** Back to the opening shot, as a scene starts. */
-  restart(): void {
+  /** Back to the opening shot, as a scene starts; with `rng`, choosing with it from now on. */
+  restart(rng?: Rng): void {
+    if (rng) this.rng = rng;
     this.speaker = this.performers[0];
     this.pausedUntil = 0;
     this.cut(this.cast ? 'group' : 'medium');
+  }
+
+  private rand(a: number, b: number): number {
+    return a + this.rng() * (b - a);
   }
 
   private get cast(): boolean {
@@ -115,8 +122,8 @@ export class CameraDirector {
           // A new speaker: go to them, now and then via the group shot.
           if (speaking && from !== this.speaker) {
             this.speaker = from;
-            this.cut(Math.random() < 0.2 ? 'group' : this.pick(['medium', 'close', 'ots']));
-          } else if (speaking && since > 2 && Math.random() < 0.5) {
+            this.cut(this.rng() < 0.2 ? 'group' : this.pick(['medium', 'close', 'ots']));
+          } else if (speaking && since > 2 && this.rng() < 0.5) {
             this.cut(this.pick(['medium', 'close', 'angle', 'ots']));
           }
           break;
@@ -132,14 +139,14 @@ export class CameraDirector {
         }
         break;
       case 'emotion':
-        if ((msg.name === 'surprised' || msg.name === 'amused') && since > 2.5 && Math.random() < 0.35) {
+        if ((msg.name === 'surprised' || msg.name === 'amused') && since > 2.5 && this.rng() < 0.35) {
           if (from !== this.speaker) this.cut('reaction', from);
           else this.cut('close');
         }
         break;
       case 'user_state':
         // In a scene every listener gets this; only a live person speaking matters here.
-        if (!this.cast && msg.state === 'speaking' && since > 3 && Math.random() < 0.5) this.cut(this.pick(['wide', 'angle']));
+        if (!this.cast && msg.state === 'speaking' && since > 3 && this.rng() < 0.5) this.cut(this.pick(['wide', 'angle']));
         break;
     }
   }
@@ -148,7 +155,7 @@ export class CameraDirector {
     const t = (this.time += dt);
     if (!this.enabled || t < this.pausedUntil) return;
     if (t > this.nextCut) {
-      if (this.cast && Math.random() < 0.25) this.cut('reaction');
+      if (this.cast && this.rng() < 0.25) this.cut('reaction');
       else this.cut(this.pick(this.cast ? ['group', 'medium', 'close', 'angle', 'ots'] : ['wide', 'medium', 'close', 'angle']));
     }
 
@@ -198,9 +205,9 @@ export class CameraDirector {
     this.shot = shot;
     this.subject = shot === 'reaction' ? (subject ?? this.listener()) : this.speaker;
     if (shot === 'ots') this.shoulder = this.listener();
-    if (shot === 'reaction') this.reactionShot = Math.random() < 0.5 ? 'medium' : 'close';
+    if (shot === 'reaction') this.reactionShot = this.rng() < 0.5 ? 'medium' : 'close';
     this.shotStart = this.lastCut = this.time;
-    this.nextCut = this.time + rand(5, 10);
+    this.nextCut = this.time + this.rand(5, 10);
     this.camera.fov = shot === 'group' ? GROUP_FOV : shot === 'ots' ? OTS_FOV : SHOTS[shot === 'reaction' ? this.reactionShot : shot].fov;
     this.camera.updateProjectionMatrix();
   }
@@ -208,12 +215,12 @@ export class CameraDirector {
   /** Someone other than the speaker, at random. */
   private listener(): Performer {
     const others = this.performers.filter((p) => p !== this.speaker);
-    return others[Math.floor(Math.random() * others.length)] ?? this.speaker;
+    return others[Math.floor(this.rng() * others.length)] ?? this.speaker;
   }
 
   /** A random shot from `options`, never the one we're already on. */
   private pick(options: ShotName[]): ShotName {
     const fresh = options.filter((o) => o !== this.shot);
-    return fresh[Math.floor(Math.random() * fresh.length)] ?? this.shot;
+    return fresh[Math.floor(this.rng() * fresh.length)] ?? this.shot;
   }
 }

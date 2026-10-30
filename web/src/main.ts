@@ -8,6 +8,7 @@ import { Seats } from './seats';
 import { stageMarks } from './stage';
 import { ScenePlayer, loadScene } from './scenePlayer';
 import { TabRecorder, download } from './recorder';
+import { seededBy } from './random';
 import { CameraDirector, groupFraming } from './camera';
 import { CAPTION_STYLES, Captions, type Style } from './captions';
 
@@ -118,27 +119,35 @@ function receive(msg: BehaviourMsg, source: 'agent' | 'local', performer = lead)
   while (log.children.length > 14) log.lastElementChild!.remove();
 }
 
-// Manual triggers, for testing renderers without an agent.
-for (const name of EMOTION_NAMES) addButton('#emotions', name, () => receive({ type: 'emotion', name }, 'local'));
-for (const name of GESTURE_NAMES) addButton('#gestures', name, () => receive({ type: 'gesture', name, target: null }, 'local'));
-// With a cast, the others listen to the lead, and the lead can be turned to look at any of them.
-for (const p of performers.slice(1)) {
-  p.handle({ type: 'gaze', target: lead.id });
-  addButton('#gestures', `look at ${p.id}`, () => receive({ type: 'gaze', target: p.id }, 'local'));
+// Manual triggers, for testing renderers without an agent. With a cast they act on the
+// performer picked in "for", and the others start out looking at the lead.
+const triggerTarget = $<HTMLSelectElement>('#trigger-target');
+const chosen = () => performers.find((p) => p.id === triggerTarget.value) ?? lead;
+const trigger = (msg: BehaviourMsg) => receive(msg, 'local', chosen());
+if (performers.length > 1) {
+  $('#trigger-for').hidden = false;
+  triggerTarget.append(...performers.map((p) => new Option(p.id, p.id)));
+  for (const p of performers.slice(1)) p.handle({ type: 'gaze', target: lead.id });
 }
-if (performers.length > 1) addButton('#gestures', 'look out front', () => receive({ type: 'gaze', target: null }, 'local'));
-addButton('#gestures', 'interrupted', () => receive({ type: 'interrupted' }, 'local'));
+for (const name of EMOTION_NAMES) addButton('#emotions', name, () => trigger({ type: 'emotion', name }));
+for (const name of GESTURE_NAMES) addButton('#gestures', name, () => trigger({ type: 'gesture', name, target: null }));
+if (performers.length > 1) {
+  for (const p of performers) addButton('#gestures', `look at ${p.id}`, () => trigger({ type: 'gaze', target: p.id }));
+  addButton('#gestures', 'look out front', () => trigger({ type: 'gaze', target: null }));
+}
+addButton('#gestures', 'interrupted', () => trigger({ type: 'interrupted' }));
 // Plays web/public/voice-sample.wav (if present) through lip sync, as if the agent were talking.
 addButton('#gestures', 'voice sample', async () => {
   await audioContext.resume();
   const audio = new Audio('/voice-sample.wav');
   await audio.play();
   const stream = (audio as HTMLAudioElement & { captureStream(): MediaStream }).captureStream();
-  lead.lipsync.connect(stream.getAudioTracks()[0]);
-  receive({ type: 'agent_state', state: 'speaking' }, 'local');
+  const speaker = chosen();
+  speaker.lipsync.connect(stream.getAudioTracks()[0]);
+  receive({ type: 'agent_state', state: 'speaking' }, 'local', speaker);
   audio.onended = () => {
-    lead.lipsync.disconnect();
-    receive({ type: 'agent_state', state: 'listening' }, 'local');
+    speaker.lipsync.disconnect();
+    receive({ type: 'agent_state', state: 'listening' }, 'local', speaker);
   };
 });
 
@@ -190,19 +199,46 @@ if (built) {
   setStatus(`loading "${built.scene.title || sceneName}"…`);
   await player.load();
   setStatus(`"${built.scene.title || sceneName}": ${built.scene.lines.length} lines`);
+  const lines = built.scene.lines;
   const play = $<HTMLButtonElement>('#play');
-  const start = () => {
-    director.restart();
-    player!.play();
-    play.textContent = 'Stop';
+  const from = $<HTMLSelectElement>('#line');
+  const gap = $<HTMLInputElement>('#gap');
+  from.append(...lines.map((l, i) => new Option(`${i + 1}. ${l.speaker}: ${l.text}`, String(i))));
+  gap.value = String(player.gap);
+  gap.onchange = () => (player!.gap = Math.max(0, Number(gap.value) || 0));
+  const label = () => (play.textContent = player!.playing ? 'Pause' : player!.paused ? 'Resume' : 'Play scene');
+
+  // Every random choice (idle motion, talk gestures, camera, caption styles) is seeded from the
+  // scene, and clocks restart, so playing from the top looks the same every time.
+  const reseed = () => {
+    for (const p of performers) p.controller.restart(seededBy(`${sceneName}/${p.id}`));
+    director.restart(seededBy(`${sceneName}/camera`));
+    captions.restart(seededBy(`${sceneName}/captions`));
+  };
+  /** Plays from line `i`: from the top it's the same every time; from elsewhere it carries on. */
+  const start = (i = 0) => {
+    captions.clear();
+    if (i === 0) reseed();
+    player!.play(i);
+    label();
   };
   play.onclick = async () => {
     await audioContext.resume(); // needs the click's user gesture
-    if (player!.playing) {
-      player!.stop();
-      play.textContent = 'Play scene';
-    } else start();
+    if (player!.playing) player!.pause();
+    else if (player!.paused) player!.resume();
+    else start(Number(from.value));
+    label();
   };
+  $<HTMLButtonElement>('#restart').onclick = async () => {
+    await audioContext.resume();
+    from.value = '0';
+    start(0);
+  };
+  from.onchange = async () => {
+    await audioContext.resume();
+    start(Number(from.value));
+  };
+  player.onLine = (i) => (from.value = String(i));
 
   // Record: share this tab, hide the panel, play from the top, and save a .webm when it ends
   // (or on Esc). The stage shrinks to the largest 16:9 frame that fits the window, and the
@@ -230,7 +266,7 @@ if (built) {
     if (!rec) return;
     recording = null;
     player!.stop();
-    play.textContent = 'Play scene';
+    label();
     document.body.classList.remove('recording');
     frameStage(false);
     const { width, height } = rec.size;
@@ -252,11 +288,12 @@ if (built) {
     }
     recording.onEnded = finish;
     // Give the sharing prompt time to go, and the director a moment on its opening shot.
-    setTimeout(start, 800);
+    setTimeout(() => start(0), 800);
   };
   addEventListener('keydown', (e) => e.key === 'Escape' && finish());
   player.onEnd = () => {
-    play.textContent = 'Play scene';
+    from.value = '0';
+    label();
     // Let the last caption fade before stopping.
     if (recording) setTimeout(finish, 1500);
   };
@@ -340,8 +377,14 @@ $<HTMLFormElement>('#join').onsubmit = async (e) => {
 // --- Loop --------------------------------------------------------------------------------
 
 const clock = new THREE.Clock();
+let audioTime = 0;
 renderer.setAnimationLoop(() => {
-  const dt = Math.min(clock.getDelta(), 0.1);
+  // While a scene plays, everything keeps time with its audio clock, so a slow frame (say, a
+  // shader compiling on a new shot) can't put the camera or gestures out of step on a replay.
+  const frame = Math.min(clock.getDelta(), 0.1);
+  const audioDt = audioContext.currentTime - audioTime;
+  audioTime = audioContext.currentTime;
+  const dt = player?.playing ? Math.min(audioDt, 1) : frame;
   player?.update();
   for (const p of performers) p.update(dt);
   controls.update();
