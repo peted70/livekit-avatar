@@ -100,7 +100,7 @@ Each task should leave the live single-avatar demo working.
       one time and not the next), so a line can be re-voiced on its own until it lands.
       *Done when:* lines from different voices play back at the same perceived volume.
 - [x] [#9](https://github.com/peted70/livekit-avatar/issues/9) **2.3 Timings.** Map tag offsets and words to times; write `scene.json`.
-- [ ] [#10](https://github.com/peted70/livekit-avatar/issues/10) **2.4 Default behaviour.** Add events the script doesn't spell out: listeners look at the
+- [x] [#10](https://github.com/peted70/livekit-avatar/issues/10) **2.4 Default behaviour.** Add events the script doesn't spell out: listeners look at the
       speaker, the speaker looks at whoever they're addressing (the previous speaker by default,
       glancing at the camera now and then), and
       `agent_state` speaking/listening for each performer.
@@ -113,7 +113,7 @@ Each task should leave the live single-avatar demo working.
       so behaviour stays in sync if the tab stutters.
 - [x] [#13](https://github.com/peted70/livekit-avatar/issues/13) **3.2 Lip sync from file audio.** Route each line's audio into the speaking performer's
       `LipSync` (it takes a `MediaStreamTrack` today; add an `AudioNode` input).
-- [ ] [#14](https://github.com/peted70/livekit-avatar/issues/14) **3.3 Captions.** Feed word timings into `Captions` per speaker, so subtitles track the audio
+- [x] [#14](https://github.com/peted70/livekit-avatar/issues/14) **3.3 Captions.** Feed word timings into `Captions` per speaker, so subtitles track the audio
       exactly rather than arriving as text streams.
 - [ ] [#15](https://github.com/peted70/livekit-avatar/issues/15) **3.4 Transport.** Play, pause, restart, jump to line N; a gap setting between lines.
 
@@ -198,3 +198,9 @@ Each task should leave the live single-avatar demo working.
   with scenes/hello.md: every cue within a frame of its time; the speaker's jaw opens (peak 0.97
   and 0.68) while the listener's stays shut. Also fixed: a switched-off camera director still
   changed the lens on its cuts.
+- 2026-10-30: #10 and #14 done. The build adds gaze: as a line starts, listeners look at the
+  speaker and the speaker at whoever they're answering (the last other speaker, or the next for an
+  opening line); lines of 4s or more get a glance at the camera partway through. Those events name
+  their performer. The agent_state and user_state around each line come from the player rather
+  than the build. Captions: lines never overlap, so every performer uses the agent's animated
+  caption lane, with a new segment and style per line, fed word by word from the word timings.

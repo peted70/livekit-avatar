@@ -1,6 +1,7 @@
 """
 Turns voiced lines into a scene: word timings for the captions and behaviour events at the time
-they're spoken, from ElevenLabs' per-character alignment. Writes nothing; see build_scene.py.
+they're spoken, from ElevenLabs' per-character alignment, plus the gaze a conversation needs.
+Writes nothing; see build_scene.py.
 """
 
 from __future__ import annotations
@@ -12,6 +13,10 @@ from scene_script import Line, Script, Tag
 from scene_voice import VoicedLine
 
 AUDIO_TAG = re.compile(r"\s*\[[^\]]*\]")
+#: A speaker glances at the camera once during lines at least this long (seconds)...
+GLANCE_MIN_LINE = 4.0
+#: ...for about this long.
+GLANCE_LENGTH = 1.2
 
 
 def caption_text(text: str) -> str:
@@ -77,10 +82,37 @@ def scene_line(v: VoicedLine) -> dict[str, Any]:
     }
 
 
+def addressee(speakers: list[str], i: int) -> str | None:
+    """Who line i is said to: the last other person to speak, or for an opening line, the next."""
+    me = speakers[i]
+    earlier = [s for s in reversed(speakers[:i]) if s != me]
+    later = [s for s in speakers[i + 1 :] if s != me]
+    return (earlier or later or [None])[0]
+
+
+def add_gaze(lines: list[dict[str, Any]], cast: list[str]) -> None:
+    """Adds the gaze the script doesn't spell out: as a line starts, the listeners look at the
+    speaker and the speaker at whoever they're answering; on longer lines the speaker glances at
+    the camera partway through. Events for someone other than the speaker name their performer."""
+    speakers = [l["speaker"] for l in lines]
+    for i, line in enumerate(lines):
+        me, to = line["speaker"], addressee(speakers, i)
+        gaze = [{"t": 0.0, "msg": {"type": "gaze", "target": to}}]
+        gaze += [{"t": 0.0, "performer": other, "msg": {"type": "gaze", "target": me}} for other in cast if other != me]
+        glance = next((w["start"] for w in line["words"] if w["start"] >= 0.45 * line["duration"]), None)
+        if to and line["duration"] >= GLANCE_MIN_LINE and glance is not None and glance + GLANCE_LENGTH < line["duration"] - 0.3:
+            gaze.append({"t": glance, "msg": {"type": "gaze", "target": None}})
+            gaze.append({"t": round(glance + GLANCE_LENGTH, 3), "msg": {"type": "gaze", "target": to}})
+        # Gaze first at a shared time, so an emotion or gesture at 0 sees where they're looking.
+        line["events"] = sorted(gaze + line["events"], key=lambda e: e["t"])
+
+
 def scene(script: Script, voiced: list[VoicedLine]) -> dict[str, Any]:
+    lines = [scene_line(v) for v in voiced]
+    add_gaze(lines, list(script.cast))
     return {
         "version": 1,
         "title": script.title,
         "cast": [{"id": m.id, "avatar": m.avatar, "voice": m.voice} for m in script.cast.values()],
-        "lines": [scene_line(v) for v in voiced],
+        "lines": lines,
     }

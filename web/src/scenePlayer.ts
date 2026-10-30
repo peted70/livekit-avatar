@@ -19,8 +19,8 @@ export interface SceneLine {
   audio: string;
   duration: number;
   words: { text: string; start: number; end: number }[];
-  /** Seconds from the start of the line. */
-  events: { t: number; msg: BehaviourMsg }[];
+  /** `t` is seconds from the start of the line; an event goes to the speaker unless it names a performer. */
+  events: { t: number; performer?: string; msg: BehaviourMsg }[];
 }
 
 export async function loadScene(name: string): Promise<{ scene: Scene; base: string }> {
@@ -35,20 +35,22 @@ export async function loadScene(name: string): Promise<{ scene: Scene; base: str
 interface Cue {
   /** AudioContext time. */
   at: number;
-  performer: Performer;
-  msg: BehaviourMsg;
+  run: () => void;
 }
 
 /**
  * Plays a scene: each line's audio in turn, into the speaker's lip sync, and each event to its
  * performer when the audio clock reaches it, so behaviour stays with the audio if a frame drops.
  * The speaker gets agent_state speaking/listening around their line, the others user_state, as
- * if they were listening to a person. Call update() every frame.
+ * if they were listening to a person. Captions get the line's words as each is spoken.
+ * Call update() every frame.
  */
 export class ScenePlayer {
   /** Silence between lines, in seconds. */
   gap = 0.35;
   onEnd?: () => void;
+  /** The words of line `index` spoken so far. */
+  onWords?: (line: SceneLine, index: number, text: string) => void;
 
   private buffers: AudioBuffer[] = [];
   private sources: AudioBufferSourceNode[] = [];
@@ -86,14 +88,18 @@ export class ScenePlayer {
       this.sources.push(src);
 
       const end = at + line.duration;
-      this.cue(at, speaker, { type: 'agent_state', state: 'speaking' });
-      for (const e of line.events) this.cue(at + e.t, speaker, e.msg);
-      this.cue(end, speaker, { type: 'agent_state', state: 'listening' });
+      this.tell(at, speaker, { type: 'agent_state', state: 'speaking' });
+      for (const e of line.events) this.tell(at + e.t, this.cast.get(e.performer ?? line.speaker)!, e.msg);
+      this.tell(end, speaker, { type: 'agent_state', state: 'listening' });
       for (const other of this.cast.values()) {
         if (other === speaker) continue;
-        this.cue(at, other, { type: 'user_state', state: 'speaking' });
-        this.cue(end, other, { type: 'user_state', state: 'listening' });
+        this.tell(at, other, { type: 'user_state', state: 'speaking' });
+        this.tell(end, other, { type: 'user_state', state: 'listening' });
       }
+      line.words.forEach((w, k) => {
+        const text = line.words.slice(0, k + 1).map((w) => w.text).join(' ');
+        this.cues.push({ at: at + w.start, run: () => this.onWords?.(line, i, text) });
+      });
       this.endsAt = end;
       at = end + this.gap;
     }
@@ -115,14 +121,14 @@ export class ScenePlayer {
     const now = this.ctx.currentTime;
     let due = 0;
     while (due < this.cues.length && this.cues[due].at <= now) due++;
-    for (const { performer, msg } of this.cues.splice(0, due)) this.send(performer, msg);
+    for (const cue of this.cues.splice(0, due)) cue.run();
     if (this.playing && now >= this.endsAt) {
       this.stop();
       this.onEnd?.();
     }
   }
 
-  private cue(at: number, performer: Performer, msg: BehaviourMsg): void {
-    this.cues.push({ at, performer, msg });
+  private tell(at: number, performer: Performer, msg: BehaviourMsg): void {
+    this.cues.push({ at, run: () => this.send(performer, msg) });
   }
 }

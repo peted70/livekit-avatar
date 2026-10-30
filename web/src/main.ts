@@ -207,6 +207,9 @@ if (built) {
     }
   };
   player.onEnd = () => (play.textContent = 'Play scene');
+  // Lines never overlap, so every performer's words share the agent's caption style, a new
+  // segment (and style) per line.
+  player.onWords = (_line, i, text) => captions.show('agent', `scene-${i}`, text);
 }
 
 // --- LiveKit ---------------------------------------------------------------------------

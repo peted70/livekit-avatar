@@ -23,6 +23,14 @@ from scene_timings import scene
 from scene_voice import scene_dir, voice_scene
 
 
+def describe(e: dict) -> str:
+    """One event, briefly: "happy@0.00", or "guest gaze→pete@0.00" for someone else's."""
+    msg = e["msg"]
+    what = f"gaze→{msg['target'] or 'camera'}" if msg["type"] == "gaze" else msg["name"]
+    who = f"{e['performer']} " if "performer" in e else ""
+    return f"{who}{what}@{e['t']:.2f}"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     parser.add_argument("script", type=Path)
@@ -42,7 +50,7 @@ def main() -> None:
     (out_dir / "scene.json").write_text(json.dumps(built, indent=1), encoding="utf-8")
 
     for line in built["lines"]:
-        events = ", ".join(f"{e['msg']['name']}@{e['t']:.2f}" for e in line["events"])
+        events = ", ".join(describe(e) for e in line["events"])
         print(f"line {line['number']:<3} {line['speaker']:<10} {line['duration']:5.2f}s  {events}")
     print(f"\nWrote {out_dir.relative_to(ROOT) / 'scene.json'}. Play it at http://localhost:5173/?scene={args.script.stem}")
 
