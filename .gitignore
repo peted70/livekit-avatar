@@ -36,3 +36,6 @@ tools/elevenlabs-sample.mp3
 
 # Spike output from tools/spike_timestamps.py
 tools/spike-*.mp3
+
+# Built scenes: line audio and scene.json from tools/build_scene.py
+web/public/scenes/

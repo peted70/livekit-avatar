@@ -93,7 +93,7 @@ Each task should leave the live single-avatar demo working.
 
 - [x] [#7](https://github.com/peted70/livekit-avatar/issues/7) **2.1 Script parser.** Front matter plus `speaker: text` lines into a list of lines with
       tags and their character offsets. Unit tests.
-- [ ] [#8](https://github.com/peted70/livekit-avatar/issues/8) **2.2 Voice each line.** ElevenLabs with timestamps, one mp3 per line, cached by a hash of
+- [x] [#8](https://github.com/peted70/livekit-avatar/issues/8) **2.2 Voice each line.** ElevenLabs with timestamps, one mp3 per line, cached by a hash of
       text + voice + model so editing one line only re-voices that line. Normalise every line to
       the same loudness (about −16 LUFS), since voices differ: my clone comes out about 10 dB
       quieter than ElevenLabs' Roger. Delivery varies between generations (a `[laughs]` tag laughs
@@ -181,3 +181,8 @@ Each task should leave the live single-avatar demo working.
   tag keeps the index of the character it sat in front of, and audio tags stay in the text.
   Mistakes name the script line. Tests: `uv run --project agent pytest tools` (pytest and pyyaml
   are dev dependencies, so the agent image doesn't get them).
+- 2026-10-30: #8 done. `tools/scene_voice.py` voices each line (cached by text, voice and model;
+  `--revoice N` for another take) and gives every line one fixed gain to a shared level, so timings
+  are untouched. The clone's raw audio is very quiet (−34 LUFS) with sharp peaks, so it can't reach
+  −16 without clipping: the scene sits at the loudest level every line can reach (−21 for
+  scenes/hello.md). Both voices sounded equal. A limiter could raise the level later.
