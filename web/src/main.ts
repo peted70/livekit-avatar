@@ -205,8 +205,26 @@ if (built) {
   };
 
   // Record: share this tab, hide the panel, play from the top, and save a .webm when it ends
-  // (or on Esc).
+  // (or on Esc). The stage shrinks to the largest 16:9 frame that fits the window, and the
+  // recording is cropped to it, at most RECORD_SIZE; tools/to_mp4.py brings it to exactly that.
+  const RECORD_SIZE = { width: 1920, height: 1080 };
   let recording: TabRecorder | null = null;
+  let upscaled = '';
+  const frameStage = (on: boolean) => {
+    const stage = $('#stage'), caps = $('#captions');
+    if (on) {
+      const w = Math.min(innerWidth, (innerHeight * 16) / 9), h = (w * 9) / 16;
+      const top = (innerHeight - h) / 2;
+      Object.assign(stage.style, { inset: 'auto', left: `${(innerWidth - w) / 2}px`, top: `${top}px`, width: `${w}px`, height: `${h}px` });
+      caps.style.bottom = `${innerHeight - top - h + 0.08 * h}px`;
+      const px = Math.round(w * devicePixelRatio);
+      upscaled = px < RECORD_SIZE.width ? ` (smaller than ${RECORD_SIZE.width}px wide: full screen, F11, makes the 1080p version sharp)` : '';
+    } else {
+      stage.removeAttribute('style');
+      caps.style.bottom = '';
+    }
+    resize();
+  };
   const finish = async () => {
     const rec = recording;
     if (!rec) return;
@@ -214,20 +232,25 @@ if (built) {
     player!.stop();
     play.textContent = 'Play scene';
     document.body.classList.remove('recording');
+    frameStage(false);
+    const { width, height } = rec.size;
     download(await rec.stop(), `${sceneName}.webm`);
-    setStatus(`saved ${sceneName}.webm`);
+    setStatus(`saved ${sceneName}.webm, ${width}×${height}${upscaled}`);
   };
   $<HTMLButtonElement>('#record').onclick = async () => {
     await audioContext.resume();
     player!.stop();
+    document.body.classList.add('recording');
+    frameStage(true);
     try {
-      recording = await TabRecorder.start(player!.output);
-    } catch {
-      setStatus('recording cancelled');
+      recording = await TabRecorder.start(player!.output, { crop: $('#stage'), ...RECORD_SIZE });
+    } catch (err) {
+      document.body.classList.remove('recording');
+      frameStage(false);
+      setStatus(`recording cancelled${err instanceof Error && err.name !== 'NotAllowedError' ? `: ${err.message}` : ''}`);
       return;
     }
     recording.onEnded = finish;
-    document.body.classList.add('recording');
     // Give the sharing prompt time to go, and the director a moment on its opening shot.
     setTimeout(start, 800);
   };

@@ -131,7 +131,7 @@ Each task should leave the live single-avatar demo working.
 
 - [x] [#19](https://github.com/peted70/livekit-avatar/issues/19) **5.1 Record button.** Capture the canvas plus the scene audio with `MediaRecorder` to a
       `.webm` download; hide the debug panel while recording.
-- [ ] [#20](https://github.com/peted70/livekit-avatar/issues/20) **5.2 Fixed output size.** A 1920×1080 render mode independent of the window size.
+- [x] [#20](https://github.com/peted70/livekit-avatar/issues/20) **5.2 Fixed output size.** A 1920×1080 render mode independent of the window size.
 
 ### Phase 6: writing scripts with an LLM (optional)
 
@@ -229,3 +229,11 @@ Each task should leave the live single-avatar demo working.
   A draft that won't come right is left out rather than failing the others. Three takes kept
   inventing emotions from the character notes ("dry", "sarcastic"); saying outright that tone
   goes in the words fixed it.
+- 2026-10-30: #20 done, in two halves, because Chrome won't scale a tab capture up ("Cannot
+  satisfy constraints" when asked for exactly 1920x1080 from a smaller window). While recording,
+  the stage (and captions) shrink to the largest 16:9 frame in the window, and the capture is
+  cropped to it (region capture) at most 1920x1080. `tools/to_mp4.py` then scales to exactly
+  1920x1080 (padding if needed), encodes H.264/AAC at 30 fps and writes the duration Chrome's
+  WebM lacks. Sharp output needs a frame at least 1920 physical pixels wide (full screen on a
+  1080p display); the status says when it was smaller. Checked: a 1280x860 window recorded
+  1280x720 with no bars, converted to a 1920x1080 MP4 of 9.3s.
