@@ -39,3 +39,6 @@ tools/spike-*.mp3
 
 # Built scenes: line audio and scene.json from tools/build_scene.py
 web/public/scenes/
+
+# Drafts from tools/write_scene.py --takes (keep one by renaming it)
+scenes/*-take-*.md

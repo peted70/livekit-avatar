@@ -2,7 +2,7 @@
 Writes a scene script with an LLM, from a brief: the cast (voices, avatars and who they are) and
 a premise.
 
-    uv run --project agent python tools/write_scene.py scenes/briefs/tech-news.md [-o scenes/x.md] [--force]
+    uv run --project agent python tools/write_scene.py scenes/briefs/tech-news.md [-o scenes/x.md] [--force] [--takes N]
 
 A brief looks like a script with a premise in place of the lines:
 
@@ -19,6 +19,9 @@ The model writes only the dialogue; the front matter comes from the brief, so vo
 can't be garbled. The result goes through the script parser, and any mistake it finds goes back
 to the model to fix. Uses LiveKit Inference with the agent's model (AVATAR_LLM) and keys, from
 agent/.env.local. Writes scenes/<brief name>.md unless -o says otherwise.
+
+--takes N writes N drafts at once (scenes/<name>-take-1.md and so on) and prints how each opens,
+so you can keep the best, rename it, edit it and build it.
 """
 
 from __future__ import annotations
@@ -35,6 +38,7 @@ from dotenv import load_dotenv
 
 from check_elevenlabs import ROOT
 from scene_script import ScriptError, parse
+from scene_timings import caption_text
 
 load_dotenv(ROOT / "agent" / ".env.local")
 
@@ -85,7 +89,8 @@ Write about {brief.lines} lines of dialogue, one per line, each as: id: text
 Nothing else: no title, no stage directions, no blank commentary, no markdown.
 
 Tags in the text drive the avatars and are never spoken:
-- Start every line with an emotion: [emotion:NAME], NAME one of {", ".join(EMOTIONS)}.
+- Start every line with an emotion: [emotion:NAME], NAME exactly one of {", ".join(EMOTIONS)}.
+  No other names: a dry or sarcastic tone goes in the words or a voice tag, not the emotion.
   Change it mid-line if the tone shifts.
 - Add a gesture to about half the lines, at most one per line, just before the word it should
   land on: [gesture:NAME], NAME one of {", ".join(GESTURES)}. To point at another cast member:
@@ -166,19 +171,44 @@ def main() -> None:
     parser.add_argument("-o", "--out", type=Path, help="where to write the script (default scenes/<brief name>.md)")
     parser.add_argument("--force", action="store_true", help="replace the script if it exists")
     parser.add_argument("--model", default=LLM_MODEL, help=f"LiveKit Inference model (default {LLM_MODEL})")
+    parser.add_argument("--takes", type=int, default=1, metavar="N", help="write N drafts to choose from")
     args = parser.parse_args()
 
     out = args.out or ROOT / "scenes" / f"{args.brief.stem}.md"
-    if out.exists() and not args.force:
-        sys.exit(f"{out} exists; pass --force to replace it, or -o for another name")
+    outs = [out] if args.takes == 1 else [out.with_name(f"{out.stem}-take-{k}.md") for k in range(1, args.takes + 1)]
+    taken = [o for o in outs if o.exists()]
+    if taken and not args.force:
+        sys.exit(f"{taken[0]} exists; pass --force to replace it, or -o for another name")
     try:
-        script = asyncio.run(write(load_brief(args.brief), args.model))
+        brief = load_brief(args.brief)
+        scripts = asyncio.run(takes(brief, args.model, len(outs)))
     except ScriptError as err:
         sys.exit(str(err))
-    out.write_text(script, encoding="utf-8")
-    lines = parse(script).lines
-    print(f"Wrote {out.relative_to(ROOT)}: {len(lines)} lines, {sum(len(l.text) for l in lines)} characters to voice.")
-    print(f"Read it through, then: uv run --project agent python tools/build_scene.py {out.relative_to(ROOT).as_posix()}")
+
+    for path, script in zip(outs, scripts):
+        if script is None:
+            print(f"{path.relative_to(ROOT)}: no usable draft this time")
+            continue
+        path.write_text(script, encoding="utf-8")
+        lines = parse(script).lines
+        print(f"Wrote {path.relative_to(ROOT)}: {len(lines)} lines, {sum(len(l.text) for l in lines)} characters to voice.")
+        if len(outs) > 1:
+            for line in lines[:2]:
+                print(f"    {line.speaker}: {caption_text(line.text)}")
+    first = next((p for p, s in zip(outs, scripts) if s), None)
+    if first:
+        print(f"\nRead it through, then: uv run --project agent python tools/build_scene.py {first.relative_to(ROOT).as_posix()}")
+
+
+async def takes(brief: Brief, model: str, n: int) -> list[str | None]:
+    """n drafts at once. With several, one that won't come right is left out rather than failing the rest."""
+    if n == 1:
+        return [await write(brief, model)]
+    results = await asyncio.gather(*(write(brief, model) for _ in range(n)), return_exceptions=True)
+    for r in results:
+        if isinstance(r, BaseException) and not isinstance(r, ScriptError):
+            raise r
+    return [r if isinstance(r, str) else None for r in results]
 
 
 if __name__ == "__main__":

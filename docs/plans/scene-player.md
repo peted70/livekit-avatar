@@ -137,7 +137,7 @@ Each task should leave the live single-avatar demo working.
 
 - [x] [#21](https://github.com/peted70/livekit-avatar/issues/21) **6.1 Generate a script** from a premise and a character sheet per cast member, in the script format above.
       A comedy-improv runner drafted separately (not yet in the repo) could be a starting point.
-- [ ] [#22](https://github.com/peted70/livekit-avatar/issues/22) **6.2 Takes.** Generate N versions, pick one, edit, build.
+- [x] [#22](https://github.com/peted70/livekit-avatar/issues/22) **6.2 Takes.** Generate N versions, pick one, edit, build.
 
 ## Open decisions
 
@@ -224,3 +224,8 @@ Each task should leave the live single-avatar demo working.
   dialogue; the front matter comes from the brief. The result goes through the script parser,
   and a mistake goes back to the model quoting the line (the first real run invented an emotion,
   "dry", and fixed it). Output is a draft to edit before building.
+- 2026-10-30: #22 done. `write_scene.py --takes N` writes N drafts in parallel
+  (`scenes/<name>-take-K.md`, ignored by git) and prints how each opens; keep one by renaming it.
+  A draft that won't come right is left out rather than failing the others. Three takes kept
+  inventing emotions from the character notes ("dry", "sarcastic"); saying outright that tone
+  goes in the words fixed it.
