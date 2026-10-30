@@ -99,12 +99,12 @@ Each task should leave the live single-avatar demo working.
       quieter than ElevenLabs' Roger. Delivery varies between generations (a `[laughs]` tag laughs
       one time and not the next), so a line can be re-voiced on its own until it lands.
       *Done when:* lines from different voices play back at the same perceived volume.
-- [ ] [#9](https://github.com/peted70/livekit-avatar/issues/9) **2.3 Timings.** Map tag offsets and words to times; write `scene.json`.
+- [x] [#9](https://github.com/peted70/livekit-avatar/issues/9) **2.3 Timings.** Map tag offsets and words to times; write `scene.json`.
 - [ ] [#10](https://github.com/peted70/livekit-avatar/issues/10) **2.4 Default behaviour.** Add events the script doesn't spell out: listeners look at the
       speaker, the speaker looks at whoever they're addressing (the previous speaker by default,
       glancing at the camera now and then), and
       `agent_state` speaking/listening for each performer.
-- [ ] [#11](https://github.com/peted70/livekit-avatar/issues/11) **2.5 Command.** `uv run --project agent python tools/build_scene.py scenes/interview.md`.
+- [x] [#11](https://github.com/peted70/livekit-avatar/issues/11) **2.5 Command.** `uv run --project agent python tools/build_scene.py scenes/interview.md`.
 
 ### Phase 3: the scene player (web)
 
@@ -186,3 +186,8 @@ Each task should leave the live single-avatar demo working.
   are untouched. The clone's raw audio is very quiet (−34 LUFS) with sharp peaks, so it can't reach
   −16 without clipping: the scene sits at the loudest level every line can reach (−21 for
   scenes/hello.md). Both voices sounded equal. A limiter could raise the level later.
+- 2026-10-30: #9 and #11 done. `tools/build_scene.py` voices a script and writes
+  `web/public/scenes/<name>/scene.json`: per line the audio, duration, caption text (audio tags
+  left out), word timings, and behaviour events as the same messages the live agent sends, timed
+  to the character each tag sat in front of and clamped to the audio's length (v4's alignment can
+  run a little past it). Timings are tested in `tools/test_scene_timings.py`.
