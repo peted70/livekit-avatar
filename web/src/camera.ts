@@ -54,6 +54,8 @@ export class CameraDirector {
 
   /** Cuts on conversational moments, read from the same behaviour messages the avatar gets. */
   onMessage(msg: BehaviourMsg): void {
+    // A cut changes the lens, so a switched-off director mustn't cut.
+    if (!this.enabled) return;
     const since = this.time - this.lastCut;
     switch (msg.type) {
       case 'agent_state': {

@@ -58,7 +58,8 @@ export function analyse(db: Float32Array, sampleRate: number): Mouth {
 
 /**
  * Lip sync from one voice's audio, worked out on the device. Each performer has one; they share
- * the page's AudioContext, since browsers limit how many a page may create.
+ * the page's AudioContext, since browsers limit how many a page may create. Audio reaches it
+ * from a live track (`connect`) or any audio node wired into `input`, such as a scene's line.
  */
 export class LipSync {
   private analyser: AnalyserNode | null = null;
@@ -68,14 +69,18 @@ export class LipSync {
 
   constructor(private ctx: AudioContext) {}
 
-  connect(track: MediaStreamTrack): void {
-    this.source?.disconnect();
-    this.analyser ??= Object.assign(this.ctx.createAnalyser(), {
+  /** Where to send this voice's audio. Silence when nothing is connected. */
+  get input(): AudioNode {
+    return (this.analyser ??= Object.assign(this.ctx.createAnalyser(), {
       fftSize: this.spectrum.length * 2,
       smoothingTimeConstant: 0.3,
-    });
+    }));
+  }
+
+  connect(track: MediaStreamTrack): void {
+    this.source?.disconnect();
     this.source = this.ctx.createMediaStreamSource(new MediaStream([track]));
-    this.source.connect(this.analyser);
+    this.source.connect(this.input);
   }
 
   disconnect(): void {
@@ -85,7 +90,7 @@ export class LipSync {
 
   sample(dt: number): Mouth {
     let target = silentMouth();
-    if (this.source && this.analyser) {
+    if (this.analyser) {
       this.analyser.getFloatFrequencyData(this.spectrum);
       target = analyse(this.spectrum, this.ctx.sampleRate);
     }

@@ -6,6 +6,7 @@ import { EMOTION_NAMES, GESTURE_NAMES, type BehaviourMsg, type Direction } from 
 import { Performer, type CastMember } from './performer';
 import { Seats } from './seats';
 import { stageMarks } from './stage';
+import { ScenePlayer, loadScene } from './scenePlayer';
 import { CameraDirector } from './camera';
 import { CAPTION_STYLES, Captions, type Style } from './captions';
 
@@ -31,13 +32,18 @@ controls.enableDamping = true;
 
 // The cast: everything per-avatar lives on a Performer. The live agent drives the first one.
 // ?avatar=<file> (or simple) picks the avatar; by default web/public/avatar.glb or avatar.vrm.
-// ?cast=<n> puts n of them on stage, for now all with the same avatar.
+// ?cast=<n> puts n of them on stage, for now all with the same avatar. ?scene=<name> takes the
+// cast from a built scene (web/public/scenes/<name>/scene.json) and plays it instead.
 const params = new URLSearchParams(location.search);
+const sceneName = params.get('scene');
+const built = sceneName ? await loadScene(sceneName).catch((err: Error) => (alert(err.message), null)) : null;
 const castSize = Math.max(1, Math.min(6, Number(params.get('cast')) || 1));
-const cast: CastMember[] = Array.from({ length: castSize }, (_, i) => ({
-  id: i === 0 ? 'agent' : `performer-${i + 1}`,
-  avatar: params.get('avatar') ?? undefined,
-}));
+const cast: CastMember[] = built
+  ? built.scene.cast.map((m) => ({ id: m.id, avatar: params.get('avatar') ?? m.avatar ?? undefined }))
+  : Array.from({ length: castSize }, (_, i) => ({
+      id: i === 0 ? 'agent' : `performer-${i + 1}`,
+      avatar: params.get('avatar') ?? undefined,
+    }));
 const audioContext = new AudioContext();
 let seats: Seats;
 const performers: Performer[] = await Promise.all(cast.map((m) => Performer.load(m, audioContext, (id) => gaze(m.id, id))));
@@ -103,14 +109,15 @@ const director = new CameraDirector(camera, controls, head);
 director.enabled = !view && performers.length === 1;
 $<HTMLInputElement>('#director-on').checked = director.enabled;
 
-function receive(msg: BehaviourMsg, source: 'agent' | 'local') {
-  lead.handle(msg);
+function receive(msg: BehaviourMsg, source: 'agent' | 'local', performer = lead) {
+  performer.handle(msg);
   director.onMessage(msg);
   if (msg.type === 'emotion') captions.setEmotion(msg.name);
   const { type, v, t, ...rest } = msg;
   const li = document.createElement('li');
   li.className = source;
-  li.innerHTML = `<b>${type}</b> <span>${Object.values(rest).map(String).join(' ')}</span>`;
+  const who = performers.length > 1 ? `${performer.id} ` : '';
+  li.innerHTML = `<b>${who}${type}</b> <span>${Object.values(rest).map(String).join(' ')}</span>`;
   const log = $('#log');
   log.prepend(li);
   while (log.children.length > 14) log.lastElementChild!.remove();
@@ -174,6 +181,33 @@ $<HTMLInputElement>('#captions-on').onchange = (e) => {
   captions.enabled = (e.target as HTMLInputElement).checked;
   if (!captions.enabled) captions.clear();
 };
+
+// --- Scene ---------------------------------------------------------------------------------
+
+// A built scene plays from its files; nothing joins a room.
+let player: ScenePlayer | null = null;
+if (built) {
+  player = new ScenePlayer(built.scene, built.base, audioContext, new Map(performers.map((p) => [p.id, p])), (p, msg) =>
+    receive(msg, 'agent', p),
+  );
+  $('#join').hidden = true;
+  $('#scene-controls').hidden = false;
+  setStatus(`loading "${built.scene.title || sceneName}"…`);
+  await player.load();
+  setStatus(`"${built.scene.title || sceneName}": ${built.scene.lines.length} lines`);
+  const play = $<HTMLButtonElement>('#play');
+  play.onclick = async () => {
+    await audioContext.resume(); // needs the click's user gesture
+    if (player!.playing) {
+      player!.stop();
+      play.textContent = 'Play scene';
+    } else {
+      player!.play();
+      play.textContent = 'Stop';
+    }
+  };
+  player.onEnd = () => (play.textContent = 'Play scene');
+}
 
 // --- LiveKit ---------------------------------------------------------------------------
 
@@ -252,6 +286,7 @@ $<HTMLFormElement>('#join').onsubmit = async (e) => {
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.1);
+  player?.update();
   for (const p of performers) p.update(dt);
   controls.update();
   director.update(dt);

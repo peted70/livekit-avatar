@@ -108,10 +108,10 @@ Each task should leave the live single-avatar demo working.
 
 ### Phase 3: the scene player (web)
 
-- [ ] [#12](https://github.com/peted70/livekit-avatar/issues/12) **3.1 Load and play.** `?scene=<name>` loads `scene.json`, plays the lines in order through
+- [x] [#12](https://github.com/peted70/livekit-avatar/issues/12) **3.1 Load and play.** `?scene=<name>` loads `scene.json`, plays the lines in order through
       one `AudioContext`, and schedules each line's events against the audio clock (not timers),
       so behaviour stays in sync if the tab stutters.
-- [ ] [#13](https://github.com/peted70/livekit-avatar/issues/13) **3.2 Lip sync from file audio.** Route each line's audio into the speaking performer's
+- [x] [#13](https://github.com/peted70/livekit-avatar/issues/13) **3.2 Lip sync from file audio.** Route each line's audio into the speaking performer's
       `LipSync` (it takes a `MediaStreamTrack` today; add an `AudioNode` input).
 - [ ] [#14](https://github.com/peted70/livekit-avatar/issues/14) **3.3 Captions.** Feed word timings into `Captions` per speaker, so subtitles track the audio
       exactly rather than arriving as text streams.
@@ -191,3 +191,10 @@ Each task should leave the live single-avatar demo working.
   left out), word timings, and behaviour events as the same messages the live agent sends, timed
   to the character each tag sat in front of and clamped to the audio's length (v4's alignment can
   run a little past it). Timings are tested in `tools/test_scene_timings.py`.
+- 2026-10-30: #12 and #13 done. `?scene=<name>` takes the cast from scene.json; Play schedules
+  every line on the AudioContext clock and sends each event when that clock reaches it (checked
+  each frame). Line audio goes into the speaker's `LipSync.input`, which any audio node can feed.
+  The speaker gets agent_state speaking/listening, the others user_state. Checked in a browser
+  with scenes/hello.md: every cue within a frame of its time; the speaker's jaw opens (peak 0.97
+  and 0.68) while the listener's stays shut. Also fixed: a switched-off camera director still
+  changed the lens on its cuts.
