@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BehaviourController, type BehaviourMsg, type GazeResolver } from './behaviour';
+import { BehaviourController, type BehaviourMsg, type Direction, type GazeResolver } from './behaviour';
 import { createSimpleRig } from './avatar/simpleRig';
 import { loadVrmRig } from './avatar/vrmRig';
 import { loadGlbRig } from './avatar/glbRig';
@@ -44,6 +44,13 @@ export class Performer {
   headPosition(target = new THREE.Vector3()): THREE.Vector3 {
     this.rig.root.updateWorldMatrix(true, false);
     return this.rig.root.localToWorld(target.copy(this.rig.headPosition));
+  }
+
+  /** Which way `point` (world space) is from this performer's head, relative to the way they face. */
+  directionTo(point: THREE.Vector3): Direction {
+    this.rig.root.updateWorldMatrix(true, false);
+    const d = this.rig.root.worldToLocal(point.clone()).sub(this.rig.headPosition);
+    return { yaw: Math.atan2(d.x, d.z), pitch: Math.atan2(d.y, Math.hypot(d.x, d.z)) };
   }
 
   /** Stands the performer at `position`, turned `yaw` radians from facing the camera (+z). */

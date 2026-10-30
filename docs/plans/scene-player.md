@@ -84,7 +84,7 @@ Each task should leave the live single-avatar demo working.
       unchanged. *Done when:* the live demo works exactly as before.
 - [x] [#4](https://github.com/peted70/livekit-avatar/issues/4) **1.2 Stage layout.** Place N performers in an arc, angled towards each other and the camera
       (`?cast=2` to try it). *Done when:* 1, 2 and 3 performers all lay out sensibly.
-- [ ] [#5](https://github.com/peted70/livekit-avatar/issues/5) **1.3 Gaze between performers.** Each performer's `GazeResolver` resolves any other
+- [x] [#5](https://github.com/peted70/livekit-avatar/issues/5) **1.3 Gaze between performers.** Each performer's `GazeResolver` resolves any other
       performer's identity to the direction of their head, and live participants to seats as now.
       *Done when:* a `gaze` message naming another performer turns the head towards them.
 - [ ] [#6](https://github.com/peted70/livekit-avatar/issues/6) **1.4 Per-performer debug triggers.** The test buttons target a chosen performer.
@@ -172,3 +172,8 @@ Each task should leave the live single-avatar demo working.
 - 2026-10-30: #4 done. `?cast=n` puts n performers on a shallow arc (web/src/stage.ts), turned in
   towards each other, with an opening shot that frames them all. The camera director starts off
   with a cast, since its shots only frame the lead until #16.
+- 2026-10-30: #5 done. Each performer resolves gaze for itself: another performer's id to their
+  head, a live participant to their seat, anything else to a point out front at head height
+  (exactly the old straight ahead for a performer at the origin). Seats are still angles from the
+  performer's own facing, so a turned lead looks a little off from the name labels; only matters
+  for a live session with a cast.

@@ -2,7 +2,7 @@ import './style.css';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Room, RoomEvent, Track, type Participant, type RemoteTrack } from 'livekit-client';
-import { EMOTION_NAMES, GESTURE_NAMES, type BehaviourMsg } from './behaviour';
+import { EMOTION_NAMES, GESTURE_NAMES, type BehaviourMsg, type Direction } from './behaviour';
 import { Performer, type CastMember } from './performer';
 import { Seats } from './seats';
 import { stageMarks } from './stage';
@@ -39,13 +39,25 @@ const cast: CastMember[] = Array.from({ length: castSize }, (_, i) => ({
   avatar: params.get('avatar') ?? undefined,
 }));
 const audioContext = new AudioContext();
-// Gaze towards live participants comes from their seats, set up once the lead's height is known.
 let seats: Seats;
-const performers = await Promise.all(cast.map((m) => Performer.load(m, audioContext, (id) => seats.resolve(id))));
+const performers: Performer[] = await Promise.all(cast.map((m) => Performer.load(m, audioContext, (id) => gaze(m.id, id))));
 const lead = performers[0];
 stageMarks(performers.length).forEach((mark, i) => performers[i].place(mark.position, mark.yaw));
 for (const p of performers) scene.add(p.root);
 const head = lead.headPosition();
+// Looking at nobody in particular means out front, towards the camera, at head height.
+const front = new THREE.Vector3(0, head.y, 2.5);
+
+/**
+ * Where `self` should look for `target`: another performer's head, a live participant's seat
+ * (set up once the lead's height is known), or out front.
+ */
+function gaze(self: string, target: string | null): Direction {
+  const me = performers.find((p) => p.id === self)!;
+  const other = performers.find((p) => p.id === target && p !== me);
+  if (other) return me.directionTo(other.headPosition());
+  return target && seats.has(target) ? seats.resolve(target) : me.directionTo(front);
+}
 
 // ?view=face frames a close-up of the face (lip sync, expressions); ?view=body the upper body (gestures).
 const view = params.get('view');
@@ -107,6 +119,12 @@ function receive(msg: BehaviourMsg, source: 'agent' | 'local') {
 // Manual triggers, for testing renderers without an agent.
 for (const name of EMOTION_NAMES) addButton('#emotions', name, () => receive({ type: 'emotion', name }, 'local'));
 for (const name of GESTURE_NAMES) addButton('#gestures', name, () => receive({ type: 'gesture', name, target: null }, 'local'));
+// With a cast, the others listen to the lead, and the lead can be turned to look at any of them.
+for (const p of performers.slice(1)) {
+  p.handle({ type: 'gaze', target: lead.id });
+  addButton('#gestures', `look at ${p.id}`, () => receive({ type: 'gaze', target: p.id }, 'local'));
+}
+if (performers.length > 1) addButton('#gestures', 'look out front', () => receive({ type: 'gaze', target: null }, 'local'));
 addButton('#gestures', 'interrupted', () => receive({ type: 'interrupted' }, 'local'));
 // Plays web/public/voice-sample.wav (if present) through lip sync, as if the agent were talking.
 addButton('#gestures', 'voice sample', async () => {

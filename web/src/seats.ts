@@ -40,6 +40,10 @@ export class Seats {
     for (const id of [...this.seats.keys()]) this.remove(id);
   }
 
+  has(identity: string): boolean {
+    return this.seats.has(identity);
+  }
+
   resolve = (identity: string | null): Direction => {
     const seat = identity ? this.seats.get(identity) : undefined;
     // The local viewer (or nobody in particular) is straight ahead, through the camera.
