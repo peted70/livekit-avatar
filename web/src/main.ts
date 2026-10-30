@@ -7,7 +7,7 @@ import { Performer, type CastMember } from './performer';
 import { Seats } from './seats';
 import { stageMarks } from './stage';
 import { ScenePlayer, loadScene } from './scenePlayer';
-import { CameraDirector } from './camera';
+import { CameraDirector, groupFraming } from './camera';
 import { CAPTION_STYLES, Captions, type Style } from './captions';
 
 const TOPIC = 'avatar.behaviour';
@@ -88,30 +88,24 @@ function resize() {
 }
 addEventListener('resize', resize);
 
-/** A wide shot of the whole cast: centred on their heads, far enough back to fit them all across. */
+/** A wide shot of the whole cast. */
 function frameGroup() {
-  const heads = performers.map((p) => p.headPosition());
-  const centre = heads.reduce((sum, h) => sum.add(h), new THREE.Vector3()).divideScalar(heads.length);
-  const xs = heads.map((h) => h.x);
-  const halfWidth = (Math.max(...xs) - Math.min(...xs)) / 2 + 0.6;
-  const halfFov = Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * camera.aspect);
-  const front = Math.max(...heads.map((h) => h.z));
-  controls.target.copy(centre).add(new THREE.Vector3(0, -0.4, 0));
-  camera.position.set(centre.x, centre.y - 0.15, front + Math.max(2.4, halfWidth / Math.tan(halfFov)));
+  const { pos, target } = groupFraming(performers, camera.fov, camera.aspect);
+  camera.position.copy(pos);
+  controls.target.copy(target);
 }
 
 // --- Behaviour -------------------------------------------------------------------------
 
 seats = new Seats(scene, head.y);
-// TV-interview camera; the fixed ?view= framings turn it off. Its shots only know the lead, so
-// with a cast it starts off and the group shot stays (shots for a cast are #16).
-const director = new CameraDirector(camera, controls, head);
-director.enabled = !view && performers.length === 1;
+// TV-interview camera, following whoever is speaking; the fixed ?view= framings turn it off.
+const director = new CameraDirector(camera, controls, performers);
+director.enabled = !view;
 $<HTMLInputElement>('#director-on').checked = director.enabled;
 
 function receive(msg: BehaviourMsg, source: 'agent' | 'local', performer = lead) {
   performer.handle(msg);
-  director.onMessage(msg);
+  director.onMessage(msg, performer);
   if (msg.type === 'emotion') captions.setEmotion(msg.name);
   const { type, v, t, ...rest } = msg;
   const li = document.createElement('li');

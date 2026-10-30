@@ -119,9 +119,9 @@ Each task should leave the live single-avatar demo working.
 
 ### Phase 4: camera for a cast
 
-- [ ] [#16](https://github.com/peted70/livekit-avatar/issues/16) **4.1 Shots relative to a performer.** `CameraDirector` shots take a subject: one
+- [x] [#16](https://github.com/peted70/livekit-avatar/issues/16) **4.1 Shots relative to a performer.** `CameraDirector` shots take a subject: one
       performer, or a group framed together.
-- [ ] [#17](https://github.com/peted70/livekit-avatar/issues/17) **4.2 Multi-person coverage.** Add group shots (two-shot, wide of everyone) and
+- [x] [#17](https://github.com/peted70/livekit-avatar/issues/17) **4.2 Multi-person coverage.** Add group shots (two-shot, wide of everyone) and
       over-the-shoulder shots; cut to the speaker on line changes, with occasional reaction shots
       of a listener.
 - [ ] [#18](https://github.com/peted70/livekit-avatar/issues/18) **4.3 Seeded randomness.** Idle motion, gestures and camera choices take a seed from the
@@ -204,3 +204,10 @@ Each task should leave the live single-avatar demo working.
   their performer. The agent_state and user_state around each line come from the player rather
   than the build. Captions: lines never overlap, so every performer uses the agent's animated
   caption lane, with a new segment and style per line, fed word by word from the word timings.
+- 2026-10-30: #16 and #17 done. `CameraDirector` takes the cast and frames shots on a subject:
+  the speaker (medium, close, angle; swung halfway round with their turn, for a three-quarter
+  view), the group (the opening shot with a cast), over a listener's shoulder onto the speaker,
+  or a listener reacting. With a cast it cuts to each new speaker, sometimes via the group shot,
+  and to a listener's reaction when they react. With one performer the shots and cut rules are
+  as before. The over-the-shoulder shot first sat too close: a listener turned to the speaker
+  blocked them, so it now stands further back and out.
