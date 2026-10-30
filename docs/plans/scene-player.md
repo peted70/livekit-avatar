@@ -91,7 +91,7 @@ Each task should leave the live single-avatar demo working.
 
 ### Phase 2: building scenes from scripts (Python tool)
 
-- [ ] [#7](https://github.com/peted70/livekit-avatar/issues/7) **2.1 Script parser.** Front matter plus `speaker: text` lines into a list of lines with
+- [x] [#7](https://github.com/peted70/livekit-avatar/issues/7) **2.1 Script parser.** Front matter plus `speaker: text` lines into a list of lines with
       tags and their character offsets. Unit tests.
 - [ ] [#8](https://github.com/peted70/livekit-avatar/issues/8) **2.2 Voice each line.** ElevenLabs with timestamps, one mp3 per line, cached by a hash of
       text + voice + model so editing one line only re-voices that line. Normalise every line to
@@ -177,3 +177,7 @@ Each task should leave the live single-avatar demo working.
   (exactly the old straight ahead for a performer at the origin). Seats are still angles from the
   performer's own facing, so a turned lead looks a little off from the name labels; only matters
   for a live session with a cast.
+- 2026-10-30: #7 done. `tools/scene_script.py` parses a script into cast and lines; each behaviour
+  tag keeps the index of the character it sat in front of, and audio tags stay in the text.
+  Mistakes name the script line. Tests: `uv run --project agent pytest tools` (pytest and pyyaml
+  are dev dependencies, so the agent image doesn't get them).
